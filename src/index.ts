@@ -65,6 +65,16 @@ export {
 } from './password-generator'
 export type { PasswordOptions } from './password-generator'
 
+// --- Passphrase generator ---
+export {
+  generatePassphrase,
+  PASSPHRASE_MIN_WORDS,
+  PASSPHRASE_MAX_WORDS,
+  PASSPHRASE_DEFAULT_WORDS,
+  PASSPHRASE_SEPARATORS,
+} from './passphrase-generator'
+export type { PassphraseOptions, PassphraseSeparator } from './passphrase-generator'
+
 // --- TOTP (RFC 6238) ---
 export { base32Decode, parseOtpauthUri, totpParamsFromSecret, generateTotp } from './totp'
 export type { TotpCode } from './totp'

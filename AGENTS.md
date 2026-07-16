@@ -32,9 +32,9 @@ The public API routes through a swappable `CryptoProvider`:
   Implements the contract but every method throws `NotImplementedError`. Do not
   wire it into `getCryptoProvider()`.
 
-TOTP (RFC 6238) and the password generator are standalone standard utilities —
-they are deterministic and unrelated to the swappable asymmetric scheme, so they
-do not route through the provider.
+TOTP (RFC 6238), the password generator, and the passphrase generator are
+standalone standard utilities - they are unrelated to the swappable asymmetric
+scheme, so they do not route through the provider.
 
 ## Layout
 
@@ -50,6 +50,7 @@ src/
   vault-key.ts             # seal/unseal VK
   grant-envelope.ts        # GRANULAR grant re-encryption
   password-generator.ts    # CSPRNG password generator
+  passphrase-generator.ts  # CSPRNG Diceware-style passphrase generator
   totp.ts                  # RFC 6238 TOTP + otpauth parsing
   payload-types.ts         # crypto payload types
 ```
