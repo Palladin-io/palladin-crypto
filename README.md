@@ -21,13 +21,8 @@ compatibility) the mobile and MCP-agent clients all speak the exact same crypto.
 
 ## Install
 
-As a git dependency (npm builds it via the `prepare` script on install):
-
-```jsonc
-// package.json
-"dependencies": {
-  "@palladin/crypto": "github:Palladin-io/palladin-crypto#<commit-or-tag>"
-}
+```bash
+npm install @palladin/crypto
 ```
 
 ## Usage
@@ -47,6 +42,7 @@ npm install      # runs prepare -> build
 npm test         # Vitest (RFC 6238 vectors + round-trip tests)
 npm run build    # tsup -> dist/ (ESM + CJS + d.ts)
 npm run typecheck
+npm pack --dry-run
 ```
 
 ## Security

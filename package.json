@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "description": "Palladin shared zero-knowledge crypto package (libsodium WASM) - single source of client-side crypto for the web panel and browser extension.",
   "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Palladin-io/palladin-crypto.git"
+  },
+  "homepage": "https://github.com/Palladin-io/palladin-crypto#readme",
+  "bugs": "https://github.com/Palladin-io/palladin-crypto/issues",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -23,7 +33,8 @@
     "prepare": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run build && npm test"
   },
   "dependencies": {
     "@scure/bip39": "^2.2.0",
@@ -35,5 +46,8 @@
     "tsup": "^8.5.0",
     "typescript": "~5.9.3",
     "vitest": "^4.1.9"
+  },
+  "overrides": {
+    "esbuild": "^0.28.1"
   }
 }

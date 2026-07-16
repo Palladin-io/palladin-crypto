@@ -57,8 +57,10 @@ src/
 
 ## Build & test
 
-- `npm run build` / `npm run prepare` — tsup, emits ESM + CJS + `.d.ts` to `dist/`.
-  `prepare` lets the package work as a git dependency (npm builds it on install).
+- `npm run build` / `npm run prepare` - tsup, emits ESM + CJS + `.d.ts` to `dist/`.
+- Releases are public npm packages published from signed GitHub release tags
+  through npm trusted publishing with provenance. Consumers use an exact semver
+  range from the registry - never a Git branch or commit dependency.
 - `npm test` — Vitest (node env). Includes RFC 6238 TOTP vectors and
   producer→consumer round-trips (derive→wrap→unwrap, seal→unseal, grant envelope
   decrypted as the agent would).
