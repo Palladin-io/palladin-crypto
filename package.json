@@ -1,6 +1,6 @@
 {
   "name": "@palladin/crypto",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Candidate shared zero-knowledge crypto package for Palladin clients; consumer cutover is pending.",
   "license": "Apache-2.0",
   "author": "Patryk Roguszewski <patryk.roguszewski@palladin.io>",
@@ -47,7 +47,8 @@
   "dependencies": {
     "@scure/bip39": "^2.2.0",
     "hash-wasm": "^4.12.0",
-    "libsodium-wrappers": "^0.8.2"
+    "libsodium-wrappers": "^0.8.2",
+    "zod": "4.3.6"
   },
   "devDependencies": {
     "@types/libsodium-wrappers": "^0.8.2",

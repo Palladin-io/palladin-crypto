@@ -24,6 +24,14 @@ protocol contracts remain authoritative for production behavior.
 - **Password generator** — CSPRNG with rejection sampling (`generatePassword`).
 - **Provider abstraction** — `CryptoProvider` with a live `LibsodiumProvider` and
   a reserved `WebCryptoProvider` slot for future passkeys (ECDSA P-256).
+- **Canonical Vault protocol 2** — versioned XChaCha20-Poly1305 envelopes,
+  HKDF-SHA-256 subkeys, X25519 sealed-key wrappers, canonical AAD/JSON, and the
+  MemberVaultMetadata, MemberIndex, MemberSecret, and AgentDiscovery projections.
+
+Protocol 2 is additive in `0.2.x`. The legacy `0.1.x` operations keep their
+original byte format and remain available only for callers that have not yet
+completed the coordinated non-production cutover. Protocol 2 consumers must
+reject unknown suite/version discriminators; there is no algorithm fallback.
 
 ## Install
 
@@ -48,7 +56,7 @@ const plaintext = await decryptEntry(content, vaultKey)
 
 ```bash
 npm install      # runs prepare -> build
-npm test         # Vitest (RFC 6238 vectors + round-trip tests)
+npm test         # Vitest (RFC 6238 + cross-client Protocol 2 vectors/negative tests)
 npm run build    # tsup -> dist/ (ESM + CJS + d.ts)
 npm run typecheck
 npm pack --dry-run

@@ -41,7 +41,22 @@ export {
 } from './argon2'
 
 // --- Encoding ---
-export { toBase64, fromBase64 } from './encoding'
+export { toBase64, fromBase64, toBase64Url, fromBase64Url } from './encoding'
+
+// --- Canonical Vault protocol 2 (additive; legacy APIs above remain unchanged) ---
+export * from './vault-v2-bytes'
+export * from './vault-v2-signatures'
+export * from './vault-v2-protocol'
+export * from './crypto-suite'
+export * from './canonical-aad'
+export * from './envelope'
+export * from './hkdf'
+export * from './vault-envelope'
+export * from './x25519-wrapper'
+export * from './vault-v2-kdf'
+export * from './vault-plaintext'
+export * from './vault-protocol'
+export * from './entry-protocol'
 
 // --- Entry encryption ---
 export { encryptEntry, decryptEntry } from './entry-crypto'
