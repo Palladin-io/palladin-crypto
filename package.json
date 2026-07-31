@@ -1,8 +1,9 @@
 {
   "name": "@palladin/crypto",
   "version": "0.1.0",
-  "description": "Palladin shared zero-knowledge crypto package (libsodium WASM) - single source of client-side crypto for the web panel and browser extension.",
-  "license": "GPL-3.0-or-later",
+  "description": "Candidate shared zero-knowledge crypto package for Palladin clients; consumer cutover is pending.",
+  "license": "Apache-2.0",
+  "author": "Patryk Roguszewski <patryk.roguszewski@palladin.io>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Palladin-io/palladin-crypto.git"
@@ -25,7 +26,11 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "NOTICE",
+    "THIRD_PARTY_NOTICES.md",
+    "SBOM.cdx.json",
+    "TRADEMARKS.md"
   ],
   "sideEffects": false,
   "scripts": {
@@ -34,7 +39,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run typecheck && npm run build && npm test"
+    "oss:generate": "node scripts/generate-oss-metadata.mjs",
+    "oss:check": "node scripts/generate-oss-metadata.mjs --check",
+    "package:check": "node scripts/check-package-contents.mjs",
+    "prepublishOnly": "npm run typecheck && npm run build && npm test && npm run oss:check && npm run package:check"
   },
   "dependencies": {
     "@scure/bip39": "^2.2.0",

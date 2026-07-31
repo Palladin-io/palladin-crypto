@@ -1,11 +1,17 @@
 # @palladin/crypto
 
-Palladin shared zero-knowledge crypto package (libsodium WASM) â€” the single
-source of client-side crypto for the web panel and the browser extension.
+Candidate shared zero-knowledge crypto package for Palladin clients, implemented
+with libsodium WASM.
 
-All encryption and decryption in Palladin happens on the client. This package
-holds every primitive so that the web panel, the browser extension, and (by wire
-compatibility) the mobile and MCP-agent clients all speak the exact same crypto.
+> [!WARNING]
+> This package has not been published to npm. Consumer cutover and Protocol 2
+> integration are pending. The web panel and browser extension do not yet use
+> this repository as their single source of client-side cryptography.
+
+All encryption and decryption in Palladin happens on the client. This repository
+is intended to centralize compatible primitives once each consumer's migration
+is implemented, reviewed, and released. Until then, existing consumer code and
+protocol contracts remain authoritative for production behavior.
 
 ## What's inside
 
@@ -20,6 +26,9 @@ compatibility) the mobile and MCP-agent clients all speak the exact same crypto.
   a reserved `WebCryptoProvider` slot for future passkeys (ECDSA P-256).
 
 ## Install
+
+There is no registry release yet. After a reviewed release is published, the
+intended installation command will be:
 
 ```bash
 npm install @palladin/crypto
@@ -51,4 +60,6 @@ Never change the behaviour of an existing operation (KDF params, wire formats) â
 it breaks already-stored data and other clients. See [`AGENTS.md`](./AGENTS.md)
 for the full rules and [`SECURITY.md`](./SECURITY.md) for responsible disclosure.
 
-Licensed under [GPL-3.0-or-later](./LICENSE).
+Licensed under [Apache-2.0](./LICENSE). See [NOTICE](./NOTICE),
+[third-party notices](./THIRD_PARTY_NOTICES.md), and the
+[trademark policy](./TRADEMARKS.md).

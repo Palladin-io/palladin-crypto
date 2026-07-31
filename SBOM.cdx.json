@@ -1,0 +1,232 @@
+{
+  "$schema": "https://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "lifecycles": [
+      {
+        "phase": "pre-build"
+      }
+    ],
+    "component": {
+      "bom-ref": "pkg:npm/%40palladin/crypto@0.1.0",
+      "type": "library",
+      "group": "@palladin",
+      "name": "crypto",
+      "version": "0.1.0",
+      "description": "Candidate shared zero-knowledge crypto package for Palladin clients; consumer cutover is pending.",
+      "purl": "pkg:npm/%40palladin/crypto@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "pkg:npm/%40noble/hashes@2.2.0",
+      "type": "library",
+      "name": "@noble/hashes",
+      "version": "2.2.0",
+      "purl": "pkg:npm/%40noble/hashes@2.2.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "218a831a24d769be859e20209d2759c2059ba26c69cbd16d62f2cab3bc0252cd9af119084c6f831463b50ccf5cafe137fd18000d1a458eb295689d73eac8ed12"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@noble/hashes/-/hashes-2.2.0.tgz"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/%40scure/base@2.2.0",
+      "type": "library",
+      "name": "@scure/base",
+      "version": "2.2.0",
+      "purl": "pkg:npm/%40scure/base@2.2.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "6fc5c4ba92626de8225d5fad0d4b1e23ca0b41cf1e8b777fe0991bd91a5b1e1dcc7c4d39e28bf7b88cf6761164077148f22c18904874806080a64ad882090f36"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@scure/base/-/base-2.2.0.tgz"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/%40scure/bip39@2.2.0",
+      "type": "library",
+      "name": "@scure/bip39",
+      "version": "2.2.0",
+      "purl": "pkg:npm/%40scure/bip39@2.2.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "4ff063fd8bd830d9083eae8410d3bafeb72cd9eeea4cdbb2a145dfd0a0450e6a74643bb41f65f82eaeb20b78b473c3dc5a4a2fe446d6fb241965b74c9a4d79e0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@scure/bip39/-/bip39-2.2.0.tgz"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/hash-wasm@4.12.0",
+      "type": "library",
+      "name": "hash-wasm",
+      "version": "4.12.0",
+      "purl": "pkg:npm/hash-wasm@4.12.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "fbfd81dab60b6f8f08fdebdd38884ff8afc30f671ad9f8018e9e8ef860449c20e4d9ee2ba5e5c82bc1af23244f8d37b38265a7f6098ac244238f1e81b6a0c755"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/hash-wasm/-/hash-wasm-4.12.0.tgz"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/libsodium@0.8.4",
+      "type": "library",
+      "name": "libsodium",
+      "version": "0.8.4",
+      "purl": "pkg:npm/libsodium@0.8.4",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "94c7186918b4cdcb3bb5aac04ec414602eebb2d96221766ea2ad1ceb35d280db5236d76f0609127a08d6869309017cca5f74944b0229efecc4b286fe8f72ee47"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/libsodium/-/libsodium-0.8.4.tgz"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/libsodium-wrappers@0.8.4",
+      "type": "library",
+      "name": "libsodium-wrappers",
+      "version": "0.8.4",
+      "purl": "pkg:npm/libsodium-wrappers@0.8.4",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "9aef1a016b9c6634c1e4efc1b465ed5b87b56a0cbbb87c4d606ef33ed866983d63538dcb0839925992cde0985f95b74f5e3df20cee25c4cd4ef612c38083970f"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/libsodium-wrappers/-/libsodium-wrappers-0.8.4.tgz"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:npm/%40palladin/crypto@0.1.0",
+      "dependsOn": [
+        "pkg:npm/%40scure/bip39@2.2.0",
+        "pkg:npm/hash-wasm@4.12.0",
+        "pkg:npm/libsodium-wrappers@0.8.4"
+      ]
+    },
+    {
+      "ref": "pkg:npm/%40noble/hashes@2.2.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40scure/base@2.2.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40scure/bip39@2.2.0",
+      "dependsOn": [
+        "pkg:npm/%40noble/hashes@2.2.0",
+        "pkg:npm/%40scure/base@2.2.0"
+      ]
+    },
+    {
+      "ref": "pkg:npm/hash-wasm@4.12.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/libsodium@0.8.4",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/libsodium-wrappers@0.8.4",
+      "dependsOn": [
+        "pkg:npm/libsodium@0.8.4"
+      ]
+    }
+  ]
+}
