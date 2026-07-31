@@ -1,10 +1,10 @@
 # Palladin Crypto is a public security-sensitive library. The product owner
 # must approve every change.
-* @don-flamingo
+* @patryk-roguszewski
 
 # Keep security-critical ownership explicit if narrower rules are added later.
-/.github/ @don-flamingo
-/src/ @don-flamingo
-/package.json @don-flamingo
-/package-lock.json @don-flamingo
-/SECURITY.md @don-flamingo
+/.github/ @patryk-roguszewski
+/src/ @patryk-roguszewski
+/package.json @patryk-roguszewski
+/package-lock.json @patryk-roguszewski
+/SECURITY.md @patryk-roguszewski
