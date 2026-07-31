@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Palladin-io/palladin-security/security/advisories/new
+    about: Report vulnerabilities privately. Never disclose them in a public issue.
+
