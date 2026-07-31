@@ -1,0 +1,9 @@
+title = "Palladin Crypto Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Documented libsodium secretbox algorithm name"
+targetRules = ["generic-api-key"]
+paths = ['''^src/grant-envelope\.ts$''']
