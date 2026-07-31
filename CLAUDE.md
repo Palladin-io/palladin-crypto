@@ -72,11 +72,6 @@ src/
 
 ## Pull requests
 
-- Pull-request review automation is Codex-only. `codex-pr-review.yml` reads PR
-  metadata and diff without checking out untrusted PR code, runs Codex in an
-  empty workspace, and publishes the formal automated verdict.
-- Do not add Claude Code PR workflows or `.claude/skills/pr-review` /
-  `.claude/skills/fix-pr` adapters.
 - All changes go through PRs and must pass typecheck, build, tests, and security
   review before merge.
 

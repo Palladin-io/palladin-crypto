@@ -7,13 +7,20 @@ on:
 
 permissions:
   contents: read
-  id-token: write
+
+concurrency:
+  group: crypto-release
+  cancel-in-progress: false
 
 jobs:
   publish:
+    name: Publish trusted npm release
     if: github.repository == 'Palladin-io/palladin-crypto'
     runs-on: ubuntu-latest
     environment: npm
+    permissions:
+      contents: read # check out and verify the tagged source
+      id-token: write # npm trusted publishing and provenance
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -35,7 +42,7 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-          cache: npm
+          package-manager-cache: false
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
