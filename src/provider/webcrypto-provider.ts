@@ -5,7 +5,7 @@ import type { Argon2Params, CryptoProvider, KeyPair } from './crypto-provider'
  * Reserved slot for a WebCrypto-backed provider (ECDSA P-256 / SubtleCrypto),
  * the primitive family passkeys need. It implements the full {@link CryptoProvider}
  * contract so call sites type-check today, but every operation throws
- * {@link NotImplementedError} until the passkeys epic (CVT-362) lands.
+ * {@link NotImplementedError} until passkey support lands.
  *
  * Do NOT wire this into `getCryptoProvider()` — it exists to lock in the
  * contract, not to run.

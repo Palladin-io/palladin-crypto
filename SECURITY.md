@@ -1,42 +1,34 @@
 # Security Policy
 
-`@palladin/crypto` implements the client-side, zero-knowledge cryptography for
-Palladin — a password manager. We take vulnerabilities in this package very
-seriously.
+Palladin is a password manager. Do not report security vulnerabilities through
+public GitHub issues, discussions, or pull requests.
 
 ## Reporting a vulnerability
 
-**Please do not open a public issue for security reports.**
+Email **patryk.roguszewski@palladin.io** with `Security` in the subject, or
+follow the instructions at
+[palladin.io/.well-known/security.txt](https://palladin.io/.well-known/security.txt).
 
-Email **security@palladin.io** with:
-
-- a description of the issue and its impact,
-- steps to reproduce or a proof of concept,
-- affected version(s) or commit,
-- any suggested remediation.
-
-We aim to acknowledge reports within 3 business days and to keep you updated as
-we investigate and remediate. We support coordinated disclosure and will credit
-reporters who wish to be named once a fix is released.
+Include the affected package version or commit, impact, and minimal safe
+reproduction steps. Do not send acquired secrets or personal data; an
+anonymized proof is sufficient.
 
 ## Scope
 
-In scope:
+Security-sensitive areas include cryptographic construction and wire
+compatibility, KDF use, sealed-box and secretbox handling, randomness, key
+material exposure, and bypasses of the provider abstraction. A dependency-only
+report should demonstrate a concrete impact on this package.
 
-- flaws in the cryptographic construction (KDF usage, AEAD/sealed-box handling,
-  nonce management, randomness),
-- key material leaking through the API, errors, or return values,
-- provider-abstraction bypasses that weaken the guarantees above.
+## Safe harbor and testing boundaries
 
-Out of scope:
+Good-faith research limited to the minimum necessary test on data you own, or
+in an environment you are expressly authorized to test, will not be treated as
+a violation of Palladin's vulnerability-testing restrictions.
 
-- vulnerabilities in third-party dependencies without a demonstrated impact on
-  this package (report those upstream),
-- issues requiring a compromised local host / malware already running as the
-  user (outside the threat model, consistent with the product Security Model).
+The complete process and safe-harbor conditions are defined in Palladin's
+[Vulnerability Disclosure Policy](https://palladin.io/vulnerability-disclosure).
 
-## Handling of secrets
-
-This package never logs, throws, or returns key material, passwords, mnemonics,
-recovery keys, or generated one-time codes. Reports of any such leak are treated
-as high severity.
+Do not access another person's data, perform social engineering, disrupt
+availability, destroy data, retain or disclose secrets, or publicly disclose a
+vulnerability before Palladin has had a reasonable opportunity to remediate it.

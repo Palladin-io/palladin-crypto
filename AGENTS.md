@@ -1,13 +1,16 @@
 # @palladin/crypto
 
-Single source of Palladin's client-side, zero-knowledge crypto. Consumed by the
-React web panel and the browser extension (MV3), both of which must produce
-byte-identical ciphertext so the mobile and MCP-agent clients can decrypt it.
+Candidate shared implementation of Palladin's client-side, zero-knowledge
+crypto. Consumer cutover and Protocol 2 integration are pending; this repository
+is not yet the production single source. Once migrated, the React web panel and
+browser extension (MV3) must produce byte-identical ciphertext so the mobile and
+MCP-agent clients can decrypt it.
 
 ## Hard rules
 
-- **This is the only place client-side crypto lives.** Web panel and extension
-  import from here — they never inline `libsodium`/`hash-wasm` calls.
+- **Target architecture after cutover:** web panel and extension import crypto
+  from here and do not inline `libsodium`/`hash-wasm` calls. Until their cutover
+  lands, verify claims against current consumer code and protocol contracts.
 - **Never change the behaviour of an existing operation.** KDF parameters
   (`ARGON2_PARAMS`), the `crypto_secretbox` / `crypto_box_seal` wire formats, and
   the base64 encoding are the contract shared with already-stored data and other
@@ -58,9 +61,10 @@ src/
 ## Build & test
 
 - `npm run build` / `npm run prepare` - tsup, emits ESM + CJS + `.d.ts` to `dist/`.
-- Releases are public npm packages published from signed GitHub release tags
-  through npm trusted publishing with provenance. Consumers use an exact semver
-  range from the registry - never a Git branch or commit dependency.
+- Public npm releases are planned from signed GitHub release tags through npm
+  trusted publishing with provenance. No registry release or consumer cutover
+  exists yet. Once published, consumers must use an exact semver range from the
+  registry - never a Git branch or commit dependency.
 - `npm test` — Vitest (node env). Includes RFC 6238 TOTP vectors and
   producer→consumer round-trips (derive→wrap→unwrap, seal→unseal, grant envelope
   decrypted as the agent would).
@@ -68,11 +72,6 @@ src/
 
 ## Pull requests
 
-- Pull-request review automation is Codex-only. `codex-pr-review.yml` reads PR
-  metadata and diff without checking out untrusted PR code, runs Codex in an
-  empty workspace, and publishes the formal automated verdict.
-- Do not add Claude Code PR workflows or `.claude/skills/pr-review` /
-  `.claude/skills/fix-pr` adapters.
 - All changes go through PRs and must pass typecheck, build, tests, and security
   review before merge.
 

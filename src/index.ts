@@ -1,6 +1,7 @@
 /**
- * @palladin/crypto — single source of Palladin's client-side zero-knowledge
- * crypto, shared by the web panel and the browser extension.
+ * @palladin/crypto — candidate shared package for Palladin's client-side
+ * zero-knowledge crypto. Consumer cutover and Protocol 2 integration are
+ * pending; this package is not yet the production single source.
  *
  * The public API routes through a swappable {@link CryptoProvider}
  * (default {@link LibsodiumProvider}); TOTP and the password generator are
