@@ -15,10 +15,9 @@ vault contents, personal data, production logs, or unredacted configuration.
 ## Security vulnerabilities
 
 Do not open a public issue. Follow [SECURITY.md](SECURITY.md) and use
-[GitHub private vulnerability reporting](https://github.com/Palladin-io/palladin-security/security/advisories/new).
+[GitHub private vulnerability reporting](https://github.com/Palladin-io/palladin-crypto/security/advisories/new).
 
 ## Commercial and account support
 
 Public repositories are not an account-support channel. Contact
 **patryk.roguszewski@palladin.io** without including secrets or vault data.
-
