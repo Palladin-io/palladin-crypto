@@ -23,6 +23,9 @@ export interface EncryptedVaultProjection {
   id: string
   organizationId: string
   memberKeyGeneration: number
+  currentKeyEpoch: {
+    vaultKeyVersion: number
+  }
   memberVaultMetadata: MemberVaultMetadataEnvelopeContract
   memberVaultKey: MemberVaultKeyEnvelopeContract
 }
@@ -110,8 +113,13 @@ export async function openVaultProjection(
   if (wrapper.descriptor.scope.organizationId !== vault.organizationId
     || wrapper.descriptor.scope.vaultId !== vault.id
     || wrapper.descriptor.scope.memberId !== memberId
-    || wrapper.descriptor.memberKeyGeneration !== vault.memberKeyGeneration) {
+    || wrapper.descriptor.memberKeyGeneration !== vault.memberKeyGeneration
+    || wrapper.descriptor.resourceRevision !== String(vault.currentKeyEpoch.vaultKeyVersion)
+    || wrapper.descriptor.wrappedKeyVersion !== vault.currentKeyEpoch.vaultKeyVersion) {
     throw new Error('Member Vault-key envelope does not match the outer Vault')
+  }
+  if (vault.memberVaultMetadata.descriptor.keyVersion !== vault.currentKeyEpoch.vaultKeyVersion) {
+    throw new Error('Vault metadata key version does not match the outer Vault')
   }
 
   const sodium = await loadSodium()

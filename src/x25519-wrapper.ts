@@ -209,8 +209,12 @@ export function wrapperContextFromMemberVaultKey(
   if (descriptor.purpose !== WRAPPER_PURPOSE.memberVaultKey
     || descriptor.recipientKeyKind !== VAULT_KEY_KIND.memberX25519
     || descriptor.scope.memberId == null
+    || descriptor.scope.entryId != null
+    || descriptor.scope.grantOrRequestId != null
+    || descriptor.scope.agentId != null
     || descriptor.memberKeyGeneration == null
-    || descriptor.resourceRevision !== String(descriptor.wrappedKeyVersion)) {
+    || descriptor.resourceRevision !== String(descriptor.wrappedKeyVersion)
+    || descriptor.parentDescriptorHash != null) {
     throw new TypeError('Invalid Member Vault-key wrapper descriptor')
   }
   return {

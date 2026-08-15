@@ -11,52 +11,112 @@ import { openVaultProjection, sealMemberVaultMetadata } from './vault-protocol'
 import { getCryptoProvider } from './provider/active-provider'
 import {
   computeVaultKeyFingerprint,
+  type MemberVaultKeyEnvelopeContract,
   sealKeyToX25519Recipient,
   VAULT_KEY_KIND,
   wrapperContextFromMemberVaultKey,
   X25519_SEALED_BOX_V1,
 } from './x25519-wrapper'
 
-describe('openVaultProjection', () => {
-  it('authenticates outer scope, unwraps VK and decrypts metadata', async () => {
-    const sodium = await loadSodium()
-    const member = sodium.crypto_box_keypair()
-    const vaultKey = sodium.randombytes_buf(32)
-    const organizationId = '00112233-4455-6677-8899-aabbccddeeff'
-    const vaultId = '11112222-3333-4444-8555-666677778888'
-    const memberId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
-    const memberContract = { wrappedVaultKey: { descriptor: {
-      protocolVersion: 2, wrapperSuiteId: X25519_SEALED_BOX_V1, purpose: 1 as const,
-      scope: { organizationId, vaultId, memberId }, resourceRevision: '1', wrappedKeyVersion: 1,
-      memberKeyGeneration: 1, recipientKeyKind: 5 as const, recipientKeyVersion: 1,
-      recipientFingerprint: toBase64Url(await computeVaultKeyFingerprint(member.publicKey, VAULT_KEY_KIND.memberX25519)),
-      parentDescriptorHash: null,
-    }, encodedSealedKeyPackage: '' } }
-    memberContract.wrappedVaultKey.encodedSealedKeyPackage = toBase64Url(await sealKeyToX25519Recipient(
-      vaultKey, member.publicKey, wrapperContextFromMemberVaultKey(memberContract),
-    ))
-    const descriptor = {
-      protocolVersion: 2, cryptoSuiteId: 'palladin-vault-xchacha-v1',
-      purpose: ENVELOPE_PURPOSE.memberVaultMetadata,
-      scope: { organizationId, vaultId },
-      resourceRevision: '1', keyVersion: 1, memberKeyGeneration: 1, binding: {},
-    } as const
-    const metadataKey = await deriveVaultSubkey(vaultKey, {
-      protocolVersion: 2, cryptoSuiteId: VAULT_XCHACHA20_POLY1305_V1,
-      purpose: ENVELOPE_PURPOSE.memberVaultMetadata, organizationId,
-      vaultId, keyVersion: 1, memberKeyGeneration: 1,
-    })
+const organizationId = '00112233-4455-6677-8899-aabbccddeeff'
+const vaultId = '11112222-3333-4444-8555-666677778888'
+const memberId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
+
+async function createEncryptedVaultProjection(vaultKeyVersion = 1, memberKeyGeneration = 1) {
+  const sodium = await loadSodium()
+  const member = sodium.crypto_box_keypair()
+  const vaultKey = sodium.randombytes_buf(32)
+  const memberContract: MemberVaultKeyEnvelopeContract = { wrappedVaultKey: { descriptor: {
+    protocolVersion: 2, wrapperSuiteId: X25519_SEALED_BOX_V1, purpose: 1,
+    scope: { organizationId, vaultId, memberId },
+    resourceRevision: String(vaultKeyVersion), wrappedKeyVersion: vaultKeyVersion,
+    memberKeyGeneration, recipientKeyKind: 5, recipientKeyVersion: 1,
+    recipientFingerprint: toBase64Url(await computeVaultKeyFingerprint(member.publicKey, VAULT_KEY_KIND.memberX25519)),
+    parentDescriptorHash: null,
+  }, encodedSealedKeyPackage: '' } }
+  memberContract.wrappedVaultKey.encodedSealedKeyPackage = toBase64Url(await sealKeyToX25519Recipient(
+    vaultKey, member.publicKey, wrapperContextFromMemberVaultKey(memberContract),
+  ))
+  const descriptor = {
+    protocolVersion: 2, cryptoSuiteId: 'palladin-vault-xchacha-v1',
+    purpose: ENVELOPE_PURPOSE.memberVaultMetadata,
+    scope: { organizationId, vaultId },
+    resourceRevision: '1', keyVersion: vaultKeyVersion, memberKeyGeneration, binding: {},
+  } as const
+  const metadataKey = await deriveVaultSubkey(vaultKey, {
+    protocolVersion: 2, cryptoSuiteId: VAULT_XCHACHA20_POLY1305_V1,
+    purpose: ENVELOPE_PURPOSE.memberVaultMetadata, organizationId,
+    vaultId, keyVersion: vaultKeyVersion, memberKeyGeneration,
+  })
+  try {
     const envelope = await sealVaultEnvelope(descriptor, encodeMemberVaultMetadata({
       schema: 'palladin.member-vault-metadata.v1', name: 'Personal', description: null,
       icon: null, color: '#AABBCC', grantMode: 'granular',
     }), metadataKey)
-    const opened = await openVaultProjection({
-      id: vaultId, organizationId,
-      memberKeyGeneration: 1, memberVaultMetadata: envelope, memberVaultKey: memberContract,
-    }, member.privateKey, memberId)
-    expect(opened.metadata.name).toBe('Personal')
-    expect(Array.from(opened.vaultKey)).toEqual(Array.from(vaultKey))
-    wipe(opened.vaultKey); wipe(vaultKey); wipe(metadataKey); wipe(member.privateKey)
+    return {
+      projection: {
+        id: vaultId, organizationId, memberKeyGeneration,
+        currentKeyEpoch: { vaultKeyVersion },
+        memberVaultMetadata: envelope, memberVaultKey: memberContract,
+      },
+      memberPrivateKey: member.privateKey,
+      vaultKey,
+    }
+  } finally {
+    wipe(metadataKey)
+    wipe(member.publicKey)
+  }
+}
+
+describe('openVaultProjection', () => {
+  it('authenticates outer scope, unwraps VK and decrypts metadata', async () => {
+    const fixture = await createEncryptedVaultProjection()
+    try {
+      const opened = await openVaultProjection(fixture.projection, fixture.memberPrivateKey, memberId)
+      expect(opened.metadata.name).toBe('Personal')
+      expect(Array.from(opened.vaultKey)).toEqual(Array.from(fixture.vaultKey))
+      wipe(opened.vaultKey)
+    } finally {
+      wipe(fixture.vaultKey); wipe(fixture.memberPrivateKey)
+    }
+  })
+
+  it.each([
+    { name: 'only the authoritative Vault key version', memberKeyGeneration: 1 },
+    { name: 'the Vault key version and Member-key generation together', memberKeyGeneration: 2 },
+  ])('rejects the previous encrypted pair before unwrap when $name advances', async ({ memberKeyGeneration }) => {
+    const fixture = await createEncryptedVaultProjection()
+    const sodium = await loadSodium()
+    const unwrap = vi.spyOn(sodium, 'crypto_box_seal_open')
+    try {
+      await expect(openVaultProjection({
+        ...fixture.projection,
+        memberKeyGeneration,
+        currentKeyEpoch: { vaultKeyVersion: 2 },
+      }, fixture.memberPrivateKey, memberId)).rejects.toThrow('does not match the outer Vault')
+      expect(unwrap).not.toHaveBeenCalled()
+    } finally {
+      unwrap.mockRestore()
+      wipe(fixture.vaultKey); wipe(fixture.memberPrivateKey)
+    }
+  })
+
+  it('rejects old metadata before unwrap when the Member wrapper targets the current epoch', async () => {
+    const old = await createEncryptedVaultProjection()
+    const current = await createEncryptedVaultProjection(2, 2)
+    const sodium = await loadSodium()
+    const unwrap = vi.spyOn(sodium, 'crypto_box_seal_open')
+    try {
+      await expect(openVaultProjection({
+        ...current.projection,
+        memberVaultMetadata: old.projection.memberVaultMetadata,
+      }, current.memberPrivateKey, memberId)).rejects.toThrow('metadata key version does not match')
+      expect(unwrap).not.toHaveBeenCalled()
+    } finally {
+      unwrap.mockRestore()
+      wipe(old.vaultKey); wipe(old.memberPrivateKey)
+      wipe(current.vaultKey); wipe(current.memberPrivateKey)
+    }
   })
 })
 
