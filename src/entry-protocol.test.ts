@@ -99,4 +99,43 @@ describe('canonical Entry protocol', () => {
       })).resolves.toMatchObject({ memberLabel: 'Token' })
     } finally { wipe(vaultKey); wipe(discoveryKey) }
   })
+
+  it('seals and opens the canonical credit-card schema without CVV or PIN', async () => {
+    const vaultKey = await randomBytes(32)
+    const discoveryKey = await randomBytes(32)
+    const card = {
+      schema: 'palladin.member-secret.v1' as const,
+      memberLabel: 'Travel card', agentLabel: 'Travel card', discoverable: true,
+      description: null, icon: null, color: null, entryType: 'creditCard' as const,
+      agentFieldAccess: {
+        memberLabel: 'never' as const, agentLabel: 'discovery' as const,
+        description: 'never' as const, icon: 'never' as const, color: 'never' as const,
+        entryType: 'discovery' as const,
+        'creditCard.cardholderName': 'onGrantRuntime' as const,
+        'creditCard.cardNumber': 'onGrantRuntime' as const,
+        'creditCard.expiryMonth': 'onGrantRuntime' as const,
+        'creditCard.expiryYear': 'onGrantRuntime' as const,
+        'creditCard.billingAddress': 'never' as const,
+        notes: 'never' as const,
+      },
+      content: {
+        cardholderName: 'Ada Lovelace', cardNumber: '4242424242424242',
+        expiryMonth: '12', expiryYear: '2030', billingAddress: null,
+        notes: null, customFields: [],
+      },
+    }
+    const coordinates = {
+      organizationId: '00112233-4455-6677-8899-aabbccddeeff',
+      vaultId: '11112222-3333-4444-8555-666677778888',
+      entryId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', revision: '1',
+      vaultKeyVersion: 1, vdkVersion: 1, memberKeyGeneration: 1,
+    }
+    try {
+      const envelopes = await sealCanonicalEntry(coordinates, card, vaultKey, discoveryKey, 1)
+      await expect(openMemberSecret(
+        envelopes.entryKey, envelopes.memberSecret, vaultKey, coordinates,
+      )).resolves.toEqual(card)
+      expect(envelopes.agentDiscovery).not.toBeNull()
+    } finally { wipe(vaultKey); wipe(discoveryKey) }
+  })
 })

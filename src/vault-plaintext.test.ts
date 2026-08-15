@@ -70,5 +70,47 @@ describe('Vault plaintext v1', () => {
     })
     expect(() => projectGrantPayload(secret, ['credential.username'])).toThrow(/not grantable/)
   })
-})
 
+  it('round-trips cards without dedicated CVV or PIN and keeps delivery inject-only', () => {
+    const card: MemberSecretV1 = {
+      ...secret,
+      entryType: 'creditCard',
+      content: {
+        cardholderName: 'Ada Lovelace',
+        cardNumber: '4242424242424242',
+        expiryMonth: '12',
+        expiryYear: '2030',
+        billingAddress: '1 Main St',
+        notes: null,
+        customFields: [],
+      },
+      agentFieldAccess: {
+        memberLabel: 'never', agentLabel: 'discovery', description: 'never', icon: 'never',
+        color: 'never', entryType: 'discovery',
+        'creditCard.cardholderName': 'onGrantRuntime',
+        'creditCard.cardNumber': 'onGrantRuntime',
+        'creditCard.expiryMonth': 'onGrantRuntime',
+        'creditCard.expiryYear': 'onGrantRuntime',
+        'creditCard.billingAddress': 'onGrantRuntime',
+        notes: 'never',
+      },
+    }
+
+    const encoded = encodeMemberSecret(card)
+    expect(new TextDecoder().decode(encoded)).not.toMatch(/securityCode|CVV|CVC|"pin"/i)
+    expect(parseMemberSecret(encoded)).toEqual(card)
+    expect(projectMemberIndex(card)).toMatchObject({ entryType: 'creditCard', username: null, urlDomain: null })
+    expect(projectAgentDiscovery(card)).toMatchObject({ capabilities: ['inject'], fields: [] })
+    expect(projectGrantPayload(card, ['creditCard.cardNumber']).fields[0]).toMatchObject({
+      kind: 'concealed', mode: 'runtime', value: '4242424242424242',
+    })
+    expect(() => encodeMemberSecret({
+      ...card,
+      content: { ...card.content, securityCode: '123' },
+    } as MemberSecretV1)).toThrow()
+    expect(() => encodeMemberSecret({
+      ...card,
+      agentFieldAccess: { ...card.agentFieldAccess, 'creditCard.cardNumber': 'onGrantValue' },
+    })).toThrow(/Unsafe/)
+  })
+})
