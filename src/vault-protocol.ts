@@ -57,9 +57,11 @@ export async function sealMemberVaultMetadata(
     purpose: descriptor.purpose, organizationId: outer.organizationId, vaultId: outer.id,
     keyVersion: descriptor.keyVersion, memberKeyGeneration: outer.memberKeyGeneration,
   })
-  const plaintext = encodeMemberVaultMetadata(metadata)
-  try { return await sealVaultEnvelope(descriptor, plaintext, key) }
-  finally { wipe(key); plaintext.fill(0) }
+  try {
+    const plaintext = encodeMemberVaultMetadata(metadata)
+    try { return await sealVaultEnvelope(descriptor, plaintext, key) }
+    finally { wipe(plaintext) }
+  } finally { wipe(key) }
 }
 
 export interface OpenVaultProjectionResult {
