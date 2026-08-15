@@ -119,14 +119,14 @@ function exactObject(value: unknown, keys: readonly string[], label: string): as
 
 function canonicalBytes(value: unknown, length: number, label: string): Uint8Array {
   if (typeof value !== 'string') throw new TypeError(`${label} must be canonical base64url`)
-  const decoded = fromBase64Url(value)
+  const decoded = fromBase64Url(value, length)
   if (decoded.length !== length) throw new TypeError(`${label} has the wrong length`)
   return decoded
 }
 
-function canonicalVariableBytes(value: unknown, label: string): Uint8Array {
+function canonicalVariableBytes(value: unknown, maximumLength: number, label: string): Uint8Array {
   if (typeof value !== 'string') throw new TypeError(`${label} must be canonical base64url`)
-  return fromBase64Url(value)
+  return fromBase64Url(value, maximumLength)
 }
 
 function canonicalSequence(value: unknown): bigint {
@@ -209,6 +209,7 @@ class SecureChannel implements InjectSecureChannel {
       throw new TypeError('Secure-frame plaintext exceeds the permitted size')
     }
     const sodium = await loadSodium()
+    this.assertActive()
     const sequence = this.outboundSequence
     const nonce = frameNonce(this.outboundNonceBase, sequence)
     const aad = frameAad(this.sessionId, 'extension-to-host', sequence)
@@ -242,28 +243,37 @@ class SecureChannel implements InjectSecureChannel {
     }
     if (frame.sessionId !== this.sessionId) throw new Error('Secure frame belongs to another session')
     const sequence = canonicalSequence(frame.sequence)
-    if (sequence !== this.inboundSequence) throw new Error('Secure frame is replayed or out of order')
-    const ciphertext = canonicalVariableBytes(frame.ciphertext, 'Secure-frame ciphertext')
+    const ciphertext = canonicalVariableBytes(
+      frame.ciphertext,
+      MAX_PLAINTEXT_BYTES + 16,
+      'Secure-frame ciphertext',
+    )
     if (ciphertext.length < 16 || ciphertext.length > MAX_PLAINTEXT_BYTES + 16) {
+      ciphertext.fill(0)
       throw new TypeError('Secure-frame ciphertext has an invalid size')
     }
-    const sodium = await loadSodium()
-    const nonce = frameNonce(this.inboundNonceBase, sequence)
-    const aad = frameAad(this.sessionId, 'host-to-extension', sequence)
     try {
-      const plaintext = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
-        null,
-        ciphertext,
-        aad,
-        nonce,
-        this.inboundKey,
-      )
-      this.inboundSequence += 1n
-      return plaintext
+      const sodium = await loadSodium()
+      this.assertActive()
+      if (sequence !== this.inboundSequence) throw new Error('Secure frame is replayed or out of order')
+      const nonce = frameNonce(this.inboundNonceBase, sequence)
+      const aad = frameAad(this.sessionId, 'host-to-extension', sequence)
+      try {
+        const plaintext = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+          null,
+          ciphertext,
+          aad,
+          nonce,
+          this.inboundKey,
+        )
+        this.inboundSequence += 1n
+        return plaintext
+      } finally {
+        sodium.memzero(nonce)
+        sodium.memzero(aad)
+      }
     } finally {
-      sodium.memzero(ciphertext)
-      sodium.memzero(nonce)
-      sodium.memzero(aad)
+      ciphertext.fill(0)
     }
   }
 
@@ -318,6 +328,7 @@ export async function createInjectClientSession(
     extensionEphemeralPublicKey: toBase64Url(extensionPublicKey),
   }
   let disposed = false
+  let accepting = false
 
   const dispose = (): void => {
     if (disposed) return
@@ -332,6 +343,8 @@ export async function createInjectClientSession(
     openFrame,
     async acceptReady(frame: InjectSessionReady): Promise<InjectSecureChannel> {
       if (disposed) throw new Error('Inject client session is disposed')
+      if (accepting) throw new Error('Inject client session is already accepting a ready frame')
+      accepting = true
       try {
         exactObject(frame, [
           'protocol', 'type', 'extensionNonce', 'hostNonce', 'hostEphemeralPublicKey',
@@ -369,10 +382,16 @@ export async function createInjectClientSession(
               signedTranscript,
               signature,
             ))
-            const expectedSessionId = toBase64Url(sessionIdBytes)
-            sodium.memzero(sessionIdBytes)
+            let expectedSessionId: string
+            try {
+              if (disposed) throw new Error('Inject client session is disposed')
+              expectedSessionId = toBase64Url(sessionIdBytes)
+            } finally {
+              sodium.memzero(sessionIdBytes)
+            }
             if (frame.sessionId !== expectedSessionId) throw new Error('Native host session ID is invalid')
 
+            if (disposed) throw new Error('Inject client session is disposed')
             const shared = sodium.crypto_scalarmult(extensionPrivateKey, hostPublicKey)
             if (shared.every((byte) => byte === 0)) {
               sodium.memzero(shared)
@@ -381,8 +400,10 @@ export async function createInjectClientSession(
             const salt = await sha256(signedTranscript)
             const info = textEncoder.encode(SESSION_KEYS_INFO)
             try {
+              if (disposed) throw new Error('Inject client session is disposed')
               const material = await hkdfSha256(shared, salt, info)
               try {
+                if (disposed) throw new Error('Inject client session is disposed')
                 const channel = new SecureChannel(
                   expectedSessionId,
                   material.slice(32, 64),

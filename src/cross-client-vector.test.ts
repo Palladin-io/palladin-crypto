@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { encodeCanonicalEnvelopeAad, encodeCanonicalKdfContext } from './canonical-aad'
 import { requireCryptoSuite, VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
 import type { EncodedSuitePayload } from './envelope'
@@ -15,6 +15,7 @@ import {
   X25519_SEALED_BOX_V1,
   type X25519WrapperContext,
 } from './x25519-wrapper'
+import { getCryptoProvider } from './provider/active-provider'
 
 const bytes = (hex: string): Uint8Array =>
   Uint8Array.from(hex.match(/../g)?.map((value) => Number.parseInt(value, 16)) ?? [])
@@ -113,5 +114,25 @@ describe(`shared Rust vector: ${wrapperVector.name}`, () => {
       { ...context, resourceRevision: 8 },
     )).rejects.toThrow(/context verification/)
   })
-})
 
+  it('wipes an opened package when context encoding fails after unwrap', async () => {
+    const provider = getCryptoProvider()
+    let openedPackage: Uint8Array | undefined
+    const wipe = vi.spyOn(provider, 'wipe').mockImplementation((value) => {
+      if (value.length === 72) openedPackage = new Uint8Array(value)
+      value.fill(0)
+    })
+    try {
+      await expect(openKeyFromX25519Recipient(
+        bytes(wrapperVector.sealedPackageHex),
+        bytes(wrapperVector.recipientPublicKeyHex),
+        bytes(wrapperVector.recipientPrivateKeyHex),
+        { ...context, wrappedKeyVersion: 0 },
+      )).rejects.toThrow(/versions must be positive/)
+      expect(openedPackage).toBeDefined()
+      expect(hex(openedPackage!.slice(8, 40))).toBe(wrapperVector.wrappedKeyHex)
+    } finally {
+      wipe.mockRestore()
+    }
+  })
+})

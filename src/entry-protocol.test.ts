@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { openMemberIndex, openMemberSecret, sealCanonicalEntry } from './entry-protocol'
 import { deriveVaultSubkey } from './hkdf'
 import { randomBytes, wipe } from './sodium'
@@ -6,8 +6,32 @@ import { openVaultEnvelope } from './vault-envelope'
 import type { KdfContextDescriptor } from './envelope'
 import type { EnvelopeDescriptorContract } from './vault-envelope'
 import { VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
+import { getCryptoProvider } from './provider/active-provider'
+import type { MemberSecretV1 } from './vault-plaintext'
 
 describe('canonical Entry protocol', () => {
+  it('wipes a generated Entry DEK when plaintext validation fails early', async () => {
+    const generatedDek = new Uint8Array(32).fill(0x5a)
+    const provider = getCryptoProvider()
+    const randomBytes = vi.spyOn(provider, 'randomBytes').mockReturnValue(generatedDek)
+    try {
+      const invalidSecret = {
+        entryType: 'key',
+        content: { customFields: [] },
+        agentFieldAccess: {},
+      } as unknown as MemberSecretV1
+      await expect(sealCanonicalEntry({
+        organizationId: '00112233-4455-6677-8899-aabbccddeeff',
+        vaultId: '11112222-3333-4444-8555-666677778888',
+        entryId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+        revision: '1', vaultKeyVersion: 1, vdkVersion: 1, memberKeyGeneration: 1,
+      }, invalidSecret, new Uint8Array(32), new Uint8Array(32), 1)).rejects.toThrow()
+      expect(generatedDek).toEqual(new Uint8Array(32))
+    } finally {
+      randomBytes.mockRestore()
+    }
+  })
+
   it('round-trips independently keyed MemberIndex and MemberSecret envelopes', async () => {
     const vaultKey = await randomBytes(32)
     const discoveryKey = await randomBytes(32)

@@ -83,24 +83,31 @@ export async function sealCanonicalEntry(
   operation: 1 | 2 | 3 | 4 | 5,
 ): Promise<CanonicalEntryEnvelopes> {
   const entryDek = await randomBytes(32)
-  const index = projectMemberIndex(secret)
-  const discovery = projectAgentDiscovery(secret)
-  const keyCoordinates = { ...coordinates, revision: coordinates.entryKeyRevision ?? coordinates.revision }
-  const indexCoordinates = { ...coordinates, revision: coordinates.memberIndexRevision ?? coordinates.revision }
-  const discoveryCoordinates = { ...coordinates, revision: coordinates.agentDiscoveryRevision ?? coordinates.revision }
-  const entryKeyVersion = coordinates.entryKeyVersion ?? 1
-  const keyDescriptor = makeDescriptor(keyCoordinates, ENVELOPE_PURPOSE.entryDekByVk, entryKeyVersion, { wrappingVaultKeyVersion: coordinates.vaultKeyVersion })
-  const indexDescriptor = makeDescriptor(indexCoordinates, ENVELOPE_PURPOSE.memberIndex, entryKeyVersion, {})
-  const secretDescriptor = makeDescriptor(coordinates, ENVELOPE_PURPOSE.memberSecret, entryKeyVersion, { operation })
-  const discoveryDescriptor = makeDescriptor(discoveryCoordinates, ENVELOPE_PURPOSE.agentDiscovery, coordinates.vdkVersion, {})
-  const [entryWrapKey, indexKey, secretKey, discoveryKey] = await Promise.all([
-    derived(vaultKey, keyDescriptor), derived(entryDek, indexDescriptor),
-    derived(entryDek, secretDescriptor), derived(vaultDiscoveryKey, discoveryDescriptor),
-  ])
-  const secretBytes = encodeMemberSecret(secret)
-  const indexBytes = encodeMemberIndex(index)
-  const discoveryBytes = discovery ? encodeAgentDiscovery(discovery) : null
+  let entryWrapKey: Uint8Array | undefined
+  let indexKey: Uint8Array | undefined
+  let secretKey: Uint8Array | undefined
+  let discoveryKey: Uint8Array | undefined
+  let secretBytes: Uint8Array | undefined
+  let indexBytes: Uint8Array | undefined
+  let discoveryBytes: Uint8Array | null | undefined
   try {
+    const index = projectMemberIndex(secret)
+    const discovery = projectAgentDiscovery(secret)
+    const keyCoordinates = { ...coordinates, revision: coordinates.entryKeyRevision ?? coordinates.revision }
+    const indexCoordinates = { ...coordinates, revision: coordinates.memberIndexRevision ?? coordinates.revision }
+    const discoveryCoordinates = { ...coordinates, revision: coordinates.agentDiscoveryRevision ?? coordinates.revision }
+    const entryKeyVersion = coordinates.entryKeyVersion ?? 1
+    const keyDescriptor = makeDescriptor(keyCoordinates, ENVELOPE_PURPOSE.entryDekByVk, entryKeyVersion, { wrappingVaultKeyVersion: coordinates.vaultKeyVersion })
+    const indexDescriptor = makeDescriptor(indexCoordinates, ENVELOPE_PURPOSE.memberIndex, entryKeyVersion, {})
+    const secretDescriptor = makeDescriptor(coordinates, ENVELOPE_PURPOSE.memberSecret, entryKeyVersion, { operation })
+    const discoveryDescriptor = makeDescriptor(discoveryCoordinates, ENVELOPE_PURPOSE.agentDiscovery, coordinates.vdkVersion, {})
+    entryWrapKey = await derived(vaultKey, keyDescriptor)
+    indexKey = await derived(entryDek, indexDescriptor)
+    secretKey = await derived(entryDek, secretDescriptor)
+    discoveryKey = await derived(vaultDiscoveryKey, discoveryDescriptor)
+    secretBytes = encodeMemberSecret(secret)
+    indexBytes = encodeMemberIndex(index)
+    discoveryBytes = discovery ? encodeAgentDiscovery(discovery) : null
     const [entryKey, memberIndex, memberSecret, agentDiscovery] = await Promise.all([
       sealVaultEnvelope(keyDescriptor, entryDek, entryWrapKey, { wrappingVkVersion: coordinates.vaultKeyVersion }),
       sealVaultEnvelope(indexDescriptor, indexBytes, indexKey),
@@ -109,8 +116,14 @@ export async function sealCanonicalEntry(
     ])
     return { entryKey, memberIndex, memberSecret, agentDiscovery }
   } finally {
-    wipe(entryDek); wipe(entryWrapKey); wipe(indexKey); wipe(secretKey); wipe(discoveryKey)
-    secretBytes.fill(0); indexBytes.fill(0); discoveryBytes?.fill(0)
+    wipe(entryDek)
+    if (entryWrapKey) wipe(entryWrapKey)
+    if (indexKey) wipe(indexKey)
+    if (secretKey) wipe(secretKey)
+    if (discoveryKey) wipe(discoveryKey)
+    secretBytes?.fill(0)
+    indexBytes?.fill(0)
+    discoveryBytes?.fill(0)
   }
 }
 
@@ -165,4 +178,3 @@ export async function openMemberSecret(
     } finally { wipe(dek) }
   } finally { wipe(wrapKey) }
 }
-

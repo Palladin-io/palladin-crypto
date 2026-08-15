@@ -99,9 +99,13 @@ async function deriveHostMaterial(shared: Uint8Array, transcript: Uint8Array): P
   return new Uint8Array(bits)
 }
 
-async function readyFor(origin: string, open: InjectSessionOpen) {
+async function readyFor(
+  origin: string,
+  open: InjectSessionOpen,
+  signingKeypair?: { publicKey: Uint8Array; privateKey: Uint8Array },
+) {
   const sodium = await loadSodium()
-  const signing = sodium.crypto_sign_keypair()
+  const signing = signingKeypair ?? sodium.crypto_sign_keypair()
   const hostPrivateKey = sodium.randombytes_buf(32)
   const hostPublicKey = sodium.crypto_scalarmult_base(hostPrivateKey)
   const hostNonce = sodium.randombytes_buf(32)
@@ -125,6 +129,40 @@ async function readyFor(origin: string, open: InjectSessionOpen) {
   const shared = sodium.crypto_scalarmult(hostPrivateKey, fromBase64Url(open.extensionEphemeralPublicKey))
   const material = await deriveHostMaterial(shared, signedTranscript)
   return { ready, signing, material, sessionId }
+}
+
+async function authenticatedChannel(origin: string) {
+  const sodium = await loadSodium()
+  const signing = sodium.crypto_sign_keypair()
+  const client = await createInjectClientSession({
+    protocol: INJECT_PROVIDER_PROTOCOL,
+    extensionOrigin: origin,
+    pinnedHostSigningPublicKey: toBase64Url(signing.publicKey),
+  })
+  const host = await readyFor(origin, client.openFrame, signing)
+  const channel = await client.acceptReady(host.ready)
+  return { channel, host }
+}
+
+async function hostFrame(
+  host: Awaited<ReturnType<typeof readyFor>>,
+  plaintext: Uint8Array,
+): Promise<InjectSecureFrame> {
+  const sodium = await loadSodium()
+  const ciphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+    plaintext,
+    aad(host.sessionId, 'host-to-extension', 0n),
+    null,
+    nonce(host.material.slice(64, 88), 0n),
+    host.material.slice(0, 32),
+  )
+  return {
+    protocol: INJECT_PROVIDER_PROTOCOL,
+    type: 'secure',
+    sessionId: host.sessionId,
+    sequence: '0',
+    ciphertext: toBase64Url(ciphertext),
+  }
 }
 
 describe('authenticated inject-provider client channel', () => {
@@ -212,6 +250,73 @@ describe('authenticated inject-provider client channel', () => {
 
     await expect(client.acceptReady(unpaired.ready)).rejects.toThrow(/paired key/)
     await expect(client.acceptReady(unpaired.ready)).rejects.toThrow(/disposed/)
+  })
+
+  it('claims a ready frame synchronously so concurrent accepts cannot create duplicate channels', async () => {
+    const sodium = await loadSodium()
+    const origin = 'chrome-extension://abcdefghijklmnopabcdefghijklmnop/'
+    const signing = sodium.crypto_sign_keypair()
+    const client = await createInjectClientSession({
+      protocol: INJECT_PROVIDER_PROTOCOL,
+      extensionOrigin: origin,
+      pinnedHostSigningPublicKey: toBase64Url(signing.publicKey),
+    })
+    const host = await readyFor(origin, client.openFrame, signing)
+
+    const accepted = client.acceptReady(host.ready)
+    const replayed = client.acceptReady(host.ready)
+
+    await expect(replayed).rejects.toThrow(/already accepting/)
+    const channel = await accepted
+    channel.dispose()
+  })
+
+  it('fails an in-flight ready acceptance when its session is disposed', async () => {
+    const sodium = await loadSodium()
+    const origin = 'chrome-extension://abcdefghijklmnopabcdefghijklmnop/'
+    const signing = sodium.crypto_sign_keypair()
+    const client = await createInjectClientSession({
+      protocol: INJECT_PROVIDER_PROTOCOL,
+      extensionOrigin: origin,
+      pinnedHostSigningPublicKey: toBase64Url(signing.publicKey),
+    })
+    const host = await readyFor(origin, client.openFrame, signing)
+
+    const accepting = client.acceptReady(host.ready)
+    client.dispose()
+
+    await expect(accepting).rejects.toThrow(/disposed/)
+  })
+
+  it('accepts a secure frame only once when identical opens run concurrently', async () => {
+    const { channel, host } = await authenticatedChannel(
+      'chrome-extension://abcdefghijklmnopabcdefghijklmnop/',
+    )
+    const frame = await hostFrame(host, encoder.encode('one delivery'))
+
+    const first = channel.open(frame)
+    const replay = channel.open(frame)
+
+    await expect(first).resolves.toEqual(encoder.encode('one delivery'))
+    await expect(replay).rejects.toThrow(/replayed|out of order/)
+    channel.dispose()
+  })
+
+  it('does not use wiped channel keys when dispose races with seal or open', async () => {
+    const sealing = await authenticatedChannel(
+      'chrome-extension://abcdefghijklmnopabcdefghijklmnop/',
+    )
+    const pendingSeal = sealing.channel.seal(encoder.encode('never sealed'))
+    sealing.channel.dispose()
+    await expect(pendingSeal).rejects.toThrow(/disposed/)
+
+    const opening = await authenticatedChannel(
+      'chrome-extension://abcdefghijklmnopabcdefghijklmnop/',
+    )
+    const frame = await hostFrame(opening.host, encoder.encode('never opened'))
+    const pendingOpen = opening.channel.open(frame)
+    opening.channel.dispose()
+    await expect(pendingOpen).rejects.toThrow(/disposed/)
   })
 
   it('derives a canonical pairing fingerprint and rejects malformed origins and keys', async () => {

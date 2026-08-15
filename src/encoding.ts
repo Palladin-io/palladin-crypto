@@ -28,13 +28,28 @@ export function toBase64Url(bytes: Uint8Array): string {
   return toBase64(bytes).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
 }
 
-/** Decode only canonical, unpadded base64url. Legacy padded/base64 fails closed. */
-export function fromBase64Url(value: string): Uint8Array {
+/**
+ * Decode only canonical, unpadded base64url. Legacy padded/base64 fails closed.
+ * When supplied, `maximumBytes` is enforced from the encoded length before
+ * `atob` allocates the decoded string, and again against the decoded result.
+ */
+export function fromBase64Url(value: string, maximumBytes?: number): Uint8Array {
+  if (maximumBytes !== undefined) {
+    if (!Number.isSafeInteger(maximumBytes) || maximumBytes < 0) {
+      throw new TypeError('Base64url byte limit must be a non-negative safe integer')
+    }
+    if (value.length > Math.ceil(maximumBytes * 4 / 3)) {
+      throw new RangeError('Canonical base64url exceeds the permitted size')
+    }
+  }
   if (!/^[A-Za-z0-9_-]*$/.test(value) || value.length % 4 === 1) {
     throw new TypeError('Invalid canonical base64url')
   }
   const padding = '='.repeat((4 - (value.length % 4)) % 4)
   const decoded = fromBase64(value.replaceAll('-', '+').replaceAll('_', '/') + padding)
+  if (maximumBytes !== undefined && decoded.length > maximumBytes) {
+    throw new RangeError('Decoded base64url exceeds the permitted size')
+  }
   if (toBase64Url(decoded) !== value) throw new TypeError('Non-canonical base64url')
   return decoded
 }

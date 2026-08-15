@@ -225,7 +225,7 @@ export function wrapperContextFromMemberVaultKey(
     memberKeyGeneration: descriptor.memberKeyGeneration,
     recipientKeyKind: VAULT_KEY_KIND.memberX25519,
     recipientKeyVersion: descriptor.recipientKeyVersion,
-    recipientFingerprint: fromBase64Url(descriptor.recipientFingerprint),
+    recipientFingerprint: fromBase64Url(descriptor.recipientFingerprint, HASH_BYTES),
   }
 }
 
@@ -320,18 +320,21 @@ export async function openKeyFromX25519Recipient(
   }
   const sodium = await loadSodium()
   const opened = sodium.crypto_box_seal_open(sealedPackage, recipientPublicKey, recipientPrivateKey)
-  const expectedHash = await computeContextHash(context)
   try {
-    const openedMagic = new Uint8Array(opened.slice(0, PACKAGE_MAGIC.length))
-    const openedHash = new Uint8Array(opened.slice(PACKAGE_MAGIC.length + KEY_BYTES))
-    if (opened.length !== PACKAGE_MAGIC.length + KEY_BYTES + HASH_BYTES
-      || !equalBytes(openedMagic, PACKAGE_MAGIC)
-      || !equalBytes(openedHash, expectedHash)) {
-      throw new Error('X25519 wrapped key context verification failed')
+    const expectedHash = await computeContextHash(context)
+    try {
+      const openedMagic = new Uint8Array(opened.slice(0, PACKAGE_MAGIC.length))
+      const openedHash = new Uint8Array(opened.slice(PACKAGE_MAGIC.length + KEY_BYTES))
+      if (opened.length !== PACKAGE_MAGIC.length + KEY_BYTES + HASH_BYTES
+        || !equalBytes(openedMagic, PACKAGE_MAGIC)
+        || !equalBytes(openedHash, expectedHash)) {
+        throw new Error('X25519 wrapped key context verification failed')
+      }
+      return opened.slice(PACKAGE_MAGIC.length, PACKAGE_MAGIC.length + KEY_BYTES)
+    } finally {
+      wipe(expectedHash)
     }
-    return opened.slice(PACKAGE_MAGIC.length, PACKAGE_MAGIC.length + KEY_BYTES)
   } finally {
     wipe(opened)
-    wipe(expectedHash)
   }
 }

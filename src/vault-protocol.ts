@@ -76,7 +76,7 @@ export async function openMemberVaultKey(
   const publicKey = sodium.crypto_scalarmult_base(memberPrivateKey)
   try {
     return await openKeyFromX25519Recipient(
-      fromBase64Url(envelope.wrappedVaultKey.encodedSealedKeyPackage), publicKey, memberPrivateKey,
+      fromBase64Url(envelope.wrappedVaultKey.encodedSealedKeyPackage, 120), publicKey, memberPrivateKey,
       wrapperContextFromMemberVaultKey(envelope),
     )
   } finally { wipe(publicKey) }
@@ -115,7 +115,7 @@ export async function openVaultProjection(
   const sodium = await loadSodium()
   const publicKey = sodium.crypto_scalarmult_base(memberPrivateKey)
   const vaultKey = await openKeyFromX25519Recipient(
-    fromBase64Url(wrapper.encodedSealedKeyPackage),
+    fromBase64Url(wrapper.encodedSealedKeyPackage, 120),
     publicKey,
     memberPrivateKey,
     wrapperContextFromMemberVaultKey(vault.memberVaultKey),

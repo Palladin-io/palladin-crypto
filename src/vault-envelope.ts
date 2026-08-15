@@ -1,5 +1,9 @@
 import { encodeCanonicalEnvelopeAad } from './canonical-aad'
-import { requireCryptoSuite, VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
+import {
+  MAX_ENCODED_SUITE_PAYLOAD_BYTES,
+  requireCryptoSuite,
+  VAULT_XCHACHA20_POLY1305_V1,
+} from './crypto-suite'
 import { fromBase64Url, toBase64Url } from './encoding'
 import type {
   CryptoSuiteId,
@@ -97,7 +101,10 @@ export async function openVaultEnvelope<TBinding>(
 ): Promise<Uint8Array> {
   const descriptor = toEnvelopeDescriptor(envelope.descriptor)
   const aad = encodeCanonicalEnvelopeAad(descriptor, extension)
-  const payload = fromBase64Url(envelope.encodedSuitePayload) as EncodedSuitePayload
+  const payload = fromBase64Url(
+    envelope.encodedSuitePayload,
+    MAX_ENCODED_SUITE_PAYLOAD_BYTES,
+  ) as EncodedSuitePayload
   return requireCryptoSuite(envelope.descriptor.cryptoSuiteId).open({ payload, key, aad })
 }
 
@@ -112,5 +119,4 @@ export async function sealVaultEnvelope<TBinding>(
   const payload = await requireCryptoSuite(descriptor.cryptoSuiteId).seal({ plaintext, key, aad })
   return { descriptor, encodedSuitePayload: toBase64Url(payload) }
 }
-
 
