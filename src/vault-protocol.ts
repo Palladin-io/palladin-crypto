@@ -22,6 +22,7 @@ export type MemberVaultMetadataEnvelopeContract = VaultEnvelopeContract<EmptyEnv
 export interface EncryptedVaultProjection {
   id: string
   organizationId: string
+  metadataRevision: string
   memberKeyGeneration: number
   currentKeyEpoch: {
     vaultKeyVersion: number
@@ -120,6 +121,9 @@ export async function openVaultProjection(
   }
   if (vault.memberVaultMetadata.descriptor.keyVersion !== vault.currentKeyEpoch.vaultKeyVersion) {
     throw new Error('Vault metadata key version does not match the outer Vault')
+  }
+  if (vault.memberVaultMetadata.descriptor.resourceRevision !== vault.metadataRevision) {
+    throw new Error('Vault metadata revision does not match the outer Vault')
   }
 
   const sodium = await loadSodium()

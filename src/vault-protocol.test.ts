@@ -55,7 +55,7 @@ async function createEncryptedVaultProjection(vaultKeyVersion = 1, memberKeyGene
     }), metadataKey)
     return {
       projection: {
-        id: vaultId, organizationId, memberKeyGeneration,
+        id: vaultId, organizationId, metadataRevision: descriptor.resourceRevision, memberKeyGeneration,
         currentKeyEpoch: { vaultKeyVersion },
         memberVaultMetadata: envelope, memberVaultKey: memberContract,
       },
@@ -116,6 +116,31 @@ describe('openVaultProjection', () => {
       unwrap.mockRestore()
       wipe(old.vaultKey); wipe(old.memberPrivateKey)
       wipe(current.vaultKey); wipe(current.memberPrivateKey)
+    }
+  })
+
+  it('rejects a previous metadata revision within the current key epoch before unwrap', async () => {
+    const fixture = await createEncryptedVaultProjection()
+    const currentMetadata = await sealMemberVaultMetadata(
+      fixture.projection,
+      fixture.projection.memberVaultMetadata,
+      {
+        schema: 'palladin.member-vault-metadata.v1', name: 'Updated', description: null,
+        icon: null, color: '#AABBCC', grantMode: 'granular',
+      },
+      fixture.vaultKey,
+    )
+    const sodium = await loadSodium()
+    const unwrap = vi.spyOn(sodium, 'crypto_box_seal_open')
+    try {
+      await expect(openVaultProjection({
+        ...fixture.projection,
+        metadataRevision: currentMetadata.descriptor.resourceRevision,
+      }, fixture.memberPrivateKey, memberId)).rejects.toThrow('metadata revision does not match')
+      expect(unwrap).not.toHaveBeenCalled()
+    } finally {
+      unwrap.mockRestore()
+      wipe(fixture.vaultKey); wipe(fixture.memberPrivateKey)
     }
   })
 })
