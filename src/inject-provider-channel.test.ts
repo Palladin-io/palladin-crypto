@@ -130,7 +130,7 @@ async function readyFor(origin: string, open: InjectSessionOpen) {
 describe('authenticated inject-provider client channel', () => {
   it('authenticates the pinned host and exchanges ordered encrypted frames', async () => {
     const sodium = await loadSodium()
-    const origin = 'chrome-extension://abcdefghijklmnop'
+    const origin = 'chrome-extension://abcdefghijklmnopabcdefghijklmnop/'
     const signing = sodium.crypto_sign_keypair()
     const pinned = toBase64Url(signing.publicKey)
     const client = await createInjectClientSession({
@@ -201,7 +201,7 @@ describe('authenticated inject-provider client channel', () => {
 
   it('fails closed on an unpaired identity and invalidates the attempted session', async () => {
     const sodium = await loadSodium()
-    const origin = 'moz-extension://12345678-abcd-4abc-8def-123456789abc'
+    const origin = 'moz-extension://12345678-abcd-4abc-8def-123456789abc/'
     const pinned = sodium.crypto_sign_keypair()
     const client = await createInjectClientSession({
       protocol: INJECT_PROVIDER_PROTOCOL,
@@ -227,7 +227,7 @@ describe('authenticated inject-provider client channel', () => {
     })).rejects.toThrow(/origin/)
     await expect(createInjectClientSession({
       protocol: INJECT_PROVIDER_PROTOCOL,
-      extensionOrigin: 'safari-web-extension://com.palladin.extension',
+      extensionOrigin: 'safari-web-extension://com.palladin.extension/',
       pinnedHostSigningPublicKey: 'not+base64',
     })).rejects.toThrow(/base64url/)
   })
