@@ -15,3 +15,14 @@ condition = "AND"
 regexTarget = "line"
 paths = ['''^src/vectors/envelope-xchacha-hkdf\.json$''']
 regexes = ['''"derivedKeyHex": "cae3649faf3cf8827dcbc8c653ef9be6203e9b3f8e5694af26a6d581eb3d42fe"''']
+
+[[allowlists]]
+description = "Exact synthetic Identity KDF outputs in the frozen cross-client vector"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^src/identity-kdf\.test\.ts$''']
+regexes = [
+  '''authCredential: 'aRKTmLFcaSbzQy83MTRpf5PfLSjeBLGQP4HVpEudV7I',''',
+  '''masterKey: 'HtGyf-Z7BvE39e66VcP2bztQ0BBKmfzvBGCp_nLiXbk',''',
+]

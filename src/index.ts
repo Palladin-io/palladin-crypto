@@ -40,6 +40,19 @@ export {
   deriveKey,
 } from './argon2'
 
+// --- Identity password KDF v1 (Argon2id account root + HKDF domains) ---
+export {
+  IDENTITY_SECURITY_VERSION,
+  IDENTITY_KDF_PROFILE_ID,
+  IDENTITY_KDF_SALT_BYTES,
+  IDENTITY_MAXIMUM_PASSWORD_UTF8_BYTES,
+  IDENTITY_KDF_PROFILE,
+  assertIdentityKdfProfile,
+  deriveIdentityOutputsFromRoot,
+  deriveIdentityV1,
+} from './identity-kdf'
+export type { IdentityKdfMetadata, IdentityKdfOutputs } from './identity-kdf'
+
 // --- Encoding ---
 export { toBase64, fromBase64, toBase64Url, fromBase64Url } from './encoding'
 
