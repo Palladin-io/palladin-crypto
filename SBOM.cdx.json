@@ -10,13 +10,13 @@
       }
     ],
     "component": {
-      "bom-ref": "pkg:npm/%40palladin/crypto@0.1.0",
+      "bom-ref": "pkg:npm/%40palladin/crypto@0.2.0",
       "type": "library",
       "group": "@palladin",
       "name": "crypto",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Candidate shared zero-knowledge crypto package for Palladin clients; consumer cutover is pending.",
-      "purl": "pkg:npm/%40palladin/crypto@0.1.0",
+      "purl": "pkg:npm/%40palladin/crypto@0.2.0",
       "licenses": [
         {
           "license": {
@@ -188,15 +188,43 @@
           "url": "https://registry.npmjs.org/libsodium-wrappers/-/libsodium-wrappers-0.8.4.tgz"
         }
       ]
+    },
+    {
+      "bom-ref": "pkg:npm/zod@4.3.6",
+      "type": "library",
+      "name": "zod",
+      "version": "4.3.6",
+      "purl": "pkg:npm/zod@4.3.6",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "adfb65ae484764e7230f090696752d65992f68f1c2b03013a78a46a6e38e3036937430d717dd70b950c9a16a0fb0a5ffdd83d0e5f1ee1774938dc6322abf9086"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/zod/-/zod-4.3.6.tgz"
+        }
+      ]
     }
   ],
   "dependencies": [
     {
-      "ref": "pkg:npm/%40palladin/crypto@0.1.0",
+      "ref": "pkg:npm/%40palladin/crypto@0.2.0",
       "dependsOn": [
         "pkg:npm/%40scure/bip39@2.2.0",
         "pkg:npm/hash-wasm@4.12.0",
-        "pkg:npm/libsodium-wrappers@0.8.4"
+        "pkg:npm/libsodium-wrappers@0.8.4",
+        "pkg:npm/zod@4.3.6"
       ]
     },
     {
@@ -227,6 +255,10 @@
       "dependsOn": [
         "pkg:npm/libsodium@0.8.4"
       ]
+    },
+    {
+      "ref": "pkg:npm/zod@4.3.6",
+      "dependsOn": []
     }
   ]
 }

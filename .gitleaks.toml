@@ -7,3 +7,11 @@ useDefault = true
 description = "Documented libsodium secretbox algorithm name"
 targetRules = ["generic-api-key"]
 paths = ['''^src/grant-envelope\.ts$''']
+
+[[allowlists]]
+description = "Exact synthetic HKDF output in the frozen cross-client vector"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^src/vectors/envelope-xchacha-hkdf\.json$''']
+regexes = ['''"derivedKeyHex": "cae3649faf3cf8827dcbc8c653ef9be6203e9b3f8e5694af26a6d581eb3d42fe"''']
