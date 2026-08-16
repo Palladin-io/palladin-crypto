@@ -143,6 +143,32 @@ describe('openVaultProjection', () => {
       wipe(fixture.vaultKey); wipe(fixture.memberPrivateKey)
     }
   })
+
+  it.each([
+    { name: 'non-canonical', revision: '01', error: /canonical decimal/ },
+    { name: 'out-of-range', revision: '18446744073709551616', error: /exceeds UInt64/ },
+  ])('rejects matching $name metadata revisions before unwrap', async ({ revision, error }) => {
+    const fixture = await createEncryptedVaultProjection()
+    const sodium = await loadSodium()
+    const unwrap = vi.spyOn(sodium, 'crypto_box_seal_open')
+    try {
+      await expect(openVaultProjection({
+        ...fixture.projection,
+        metadataRevision: revision,
+        memberVaultMetadata: {
+          ...fixture.projection.memberVaultMetadata,
+          descriptor: {
+            ...fixture.projection.memberVaultMetadata.descriptor,
+            resourceRevision: revision,
+          },
+        },
+      }, fixture.memberPrivateKey, memberId)).rejects.toThrow(error)
+      expect(unwrap).not.toHaveBeenCalled()
+    } finally {
+      unwrap.mockRestore()
+      wipe(fixture.vaultKey); wipe(fixture.memberPrivateKey)
+    }
+  })
 })
 
 describe('sealMemberVaultMetadata', () => {

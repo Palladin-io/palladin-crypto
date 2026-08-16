@@ -122,7 +122,8 @@ export async function openVaultProjection(
   if (vault.memberVaultMetadata.descriptor.keyVersion !== vault.currentKeyEpoch.vaultKeyVersion) {
     throw new Error('Vault metadata key version does not match the outer Vault')
   }
-  if (vault.memberVaultMetadata.descriptor.resourceRevision !== vault.metadataRevision) {
+  const metadataDescriptor = toEnvelopeDescriptor(vault.memberVaultMetadata.descriptor)
+  if (metadataDescriptor.resourceRevision.toString() !== vault.metadataRevision) {
     throw new Error('Vault metadata revision does not match the outer Vault')
   }
 
@@ -144,15 +145,14 @@ export async function openVaultProjection(
     if (vault.memberVaultMetadata.descriptor.memberKeyGeneration !== vault.memberKeyGeneration) {
       throw new Error('Vault metadata generation does not match the outer Vault')
     }
-    const descriptor = toEnvelopeDescriptor(vault.memberVaultMetadata.descriptor)
     const metadataKey = await deriveVaultSubkey(vaultKey, {
-      protocolVersion: descriptor.protocolVersion,
-      cryptoSuiteId: descriptor.cryptoSuiteId,
-      purpose: descriptor.purpose,
-      organizationId: descriptor.organizationId,
-      vaultId: descriptor.vaultId,
-      keyVersion: descriptor.keyVersion,
-      memberKeyGeneration: descriptor.memberKeyGeneration,
+      protocolVersion: metadataDescriptor.protocolVersion,
+      cryptoSuiteId: metadataDescriptor.cryptoSuiteId,
+      purpose: metadataDescriptor.purpose,
+      organizationId: metadataDescriptor.organizationId,
+      vaultId: metadataDescriptor.vaultId,
+      keyVersion: metadataDescriptor.keyVersion,
+      memberKeyGeneration: metadataDescriptor.memberKeyGeneration,
     })
     try {
       const plaintext = await openVaultEnvelope(vault.memberVaultMetadata, metadataKey)
