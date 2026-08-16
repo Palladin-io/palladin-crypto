@@ -78,7 +78,7 @@ export function assertIdentityKdfProfile(metadata: IdentityKdfMetadata): void {
         : 'unsupported-kdf-profile',
     )
   }
-  if (fromBase64Url(metadata.kdfSalt).length !== IDENTITY_KDF_SALT_BYTES) {
+  if (fromBase64Url(metadata.kdfSalt, IDENTITY_KDF_SALT_BYTES).length !== IDENTITY_KDF_SALT_BYTES) {
     throw new TypeError('Invalid Identity KDF salt length')
   }
 }

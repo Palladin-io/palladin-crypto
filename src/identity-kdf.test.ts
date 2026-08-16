@@ -59,4 +59,15 @@ describe('Identity password KDF v1', () => {
       fromBase64Url(vector.kdfSalt),
     )).rejects.toThrow('password-too-long')
   })
+
+  it('rejects an oversized bootstrap salt before decoding it', () => {
+    expect(() => assertIdentityKdfProfile({
+      profileId: IDENTITY_KDF_PROFILE_ID,
+      securityVersion: IDENTITY_SECURITY_VERSION,
+      kdfSalt: 'A'.repeat(1_000_000),
+      memoryKiB: IDENTITY_KDF_PROFILE.memoryKiB,
+      iterations: IDENTITY_KDF_PROFILE.iterations,
+      parallelism: IDENTITY_KDF_PROFILE.parallelism,
+    })).toThrow('permitted size')
+  })
 })
