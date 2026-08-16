@@ -47,6 +47,7 @@ src/
   provider/                # CryptoProvider contract + implementations
   sodium-loader.ts         # lazy libsodium WASM init
   argon2.ts                # KDF params + deriveKey
+  identity-kdf.ts          # Frozen Identity password KDF v1 + profile guard
   sodium.ts                # keypair + symmetric helpers (via provider)
   encoding.ts              # base64 <-> bytes
   entry-crypto.ts          # encrypt/decrypt entry payloads

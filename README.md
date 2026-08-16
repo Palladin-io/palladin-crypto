@@ -15,7 +15,10 @@ protocol contracts remain authoritative for production behavior.
 
 ## What's inside
 
-- **Key derivation** — Argon2id (`deriveKey`, `ARGON2_PARAMS`).
+- **Key derivation** — legacy Argon2id plus the frozen Identity password KDF v1
+  (`deriveIdentityV1`, `assertIdentityKdfProfile`). Identity derives one
+  Argon2id account root and domain-separates AuthCredential from the client-only
+  master key with HKDF-SHA-256.
 - **Entry encryption** — `encryptEntry` / `decryptEntry` (XSalsa20-Poly1305).
 - **Vault-key sealing** — `sealVaultKey` / `unsealVaultKey` (X25519 sealed box).
 - **Grant envelopes** — `produceGrantEntryEnvelope` (per-grant DEK, sealed to the
