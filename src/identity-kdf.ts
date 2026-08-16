@@ -115,6 +115,12 @@ export async function deriveIdentityV1(
   if (kdfSalt.length !== IDENTITY_KDF_SALT_BYTES) {
     throw new TypeError('Invalid Identity KDF input length')
   }
+  // Every UTF-16 code unit encodes to at least one UTF-8 byte. This cheap
+  // bound prevents TextEncoder from allocating an attacker-sized buffer; the
+  // encoded-length check below remains authoritative for multibyte input.
+  if (password.length > IDENTITY_MAXIMUM_PASSWORD_UTF8_BYTES) {
+    throw new RangeError('password-too-long')
+  }
   const provider = getCryptoProvider()
   await provider.ready()
   const passwordBytes = new TextEncoder().encode(password)

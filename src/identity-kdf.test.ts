@@ -60,6 +60,14 @@ describe('Identity password KDF v1', () => {
     )).rejects.toThrow('password-too-long')
   })
 
+  it('rejects an oversized password before UTF-8 encoding', async () => {
+    await expect(deriveIdentityV1(
+      'a'.repeat(1_000_000),
+      vector.accountId,
+      fromBase64Url(vector.kdfSalt),
+    )).rejects.toThrow('password-too-long')
+  })
+
   it('rejects an oversized bootstrap salt before decoding it', () => {
     expect(() => assertIdentityKdfProfile({
       profileId: IDENTITY_KDF_PROFILE_ID,
