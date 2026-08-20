@@ -11,7 +11,7 @@ const KDF_MAGIC = new TextEncoder().encode('PLDNBSDK1')
 const HKDF_HASH = 'SHA-256'
 const KEY_BYTES = 32
 const ABSENT_SALT = new Uint8Array(32)
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const PROFILE_ID = /^[A-Za-z0-9._/-]{1,128}$/
 // Chromium IDs are lowercase alphanumeric; Firefox commonly uses an e-mail-like
 // Gecko ID. Keep the alphabet ASCII-only while supporting both stable forms.
@@ -236,7 +236,7 @@ function encodeContext(context: BrowserSessionEnvelopeContext, magic: Uint8Array
   writer.text(BROWSER_SESSION_ENVELOPE_PURPOSE, 128, 'Browser session purpose')
   writer.text(String(VAULT_XCHACHA20_POLY1305_V1), 128, 'Browser session suite')
   writer.text(normalized.apiUrl, MAX_API_URL_BYTES, 'Browser session API URL')
-  writer.text(normalized.accountId.toLowerCase(), 36, 'Browser session account ID')
+  writer.text(normalized.accountId, 36, 'Browser session account ID')
   writer.text(normalized.clientId, 128, 'Browser session client ID')
   writer.u32(normalized.identitySecurityVersion)
   writer.u32(normalized.minimumIdentitySecurityVersion)

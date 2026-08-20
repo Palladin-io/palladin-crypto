@@ -84,6 +84,26 @@ describe('browser durable-session envelope', () => {
     }
   })
 
+  it('requires the canonical lowercase account ID in sealed and parsed contexts', async () => {
+    const key = new Uint8Array(32).fill(0x47)
+    const plaintext = new TextEncoder().encode('session')
+    const uppercaseAccountId = context.accountId.toUpperCase()
+    const envelope = await sealBrowserSessionEnvelope(plaintext, key, context)
+    try {
+      await expect(sealBrowserSessionEnvelope(plaintext, key, {
+        ...context,
+        accountId: uppercaseAccountId,
+      })).rejects.toThrow('account ID')
+      expect(() => parseBrowserSessionEnvelope({
+        ...envelope,
+        context: { ...envelope.context, accountId: uppercaseAccountId },
+      })).toThrow('account ID')
+    } finally {
+      wipe(key)
+      wipe(plaintext)
+    }
+  })
+
   it('accepts a canonical Firefox WebExtension runtime ID but rejects controls', async () => {
     const key = new Uint8Array(32).fill(0x45)
     const plaintext = new TextEncoder().encode('session')
