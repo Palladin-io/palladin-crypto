@@ -67,6 +67,7 @@ export * from './x25519-wrapper'
 export * from './vault-plaintext'
 export * from './vault-protocol'
 export * from './entry-protocol'
+export * from './browser-session-envelope'
 
 // --- Entry encryption ---
 export { encryptEntry, decryptEntry } from './entry-crypto'

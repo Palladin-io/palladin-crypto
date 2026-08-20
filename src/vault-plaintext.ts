@@ -15,7 +15,13 @@ const nullableString = normalizedString.nullable()
 const color = z.string().regex(/^#[0-9A-F]{6}$/).nullable()
 const glyphIcon = z.object({ kind: z.literal('glyph'), value: normalizedString.min(1).max(64) }).strict()
 const assetIcon = z.object({ kind: z.literal('encryptedAsset'), assetId: z.string().uuid() }).strict()
-const icon = z.union([glyphIcon, assetIcon]).nullable()
+const publicAssetIcon = z.object({
+  kind: z.literal('publicAsset'),
+  assetId: z.string().uuid(),
+  revision: z.number().int().positive(),
+  url: z.string().url().max(2048),
+}).strict()
+const icon = z.union([glyphIcon, assetIcon, publicAssetIcon]).nullable()
 
 const jsonValue: z.ZodType<unknown> = z.lazy(() => z.union([
   z.string(), z.number().safe(), z.boolean(), z.null(), z.array(jsonValue), z.record(z.string(), jsonValue),
@@ -144,6 +150,28 @@ export type MemberSecretV1 = z.infer<typeof memberSecretSchema>
 export type MemberIndexV1 = z.infer<typeof memberIndexSchema>
 export type AgentDiscoveryV1 = z.infer<typeof agentDiscoverySchema>
 export type GrantPayloadV1 = z.infer<typeof grantPayloadSchema>
+export type PublicAssetVaultIconV1 = z.infer<typeof publicAssetIcon>
+
+export function publicAssetIconReference(asset: Omit<PublicAssetVaultIconV1, 'kind'>): string {
+  return `public-asset:${asset.assetId}|${asset.revision}|${encodeURIComponent(asset.url)}`
+}
+
+export function parsePublicAssetIconReference(reference: string | null | undefined): PublicAssetVaultIconV1 | null {
+  if (!reference?.startsWith('public-asset:')) return null
+  const [assetId, revisionText, encodedUrl, ...rest] = reference.slice('public-asset:'.length).split('|')
+  if (!assetId || !revisionText || !encodedUrl || rest.length > 0) return null
+  try {
+    const parsed = publicAssetIcon.parse({
+      kind: 'publicAsset',
+      assetId,
+      revision: Number(revisionText),
+      url: decodeURIComponent(encodedUrl),
+    })
+    return publicAssetIconReference(parsed) === reference ? parsed : null
+  } catch {
+    return null
+  }
+}
 
 const BUILTIN_FIELDS: Record<VaultEntryTypeName, readonly string[]> = {
   key: ['memberLabel', 'agentLabel', 'description', 'icon', 'color', 'entryType', 'key.value', 'notes'],
@@ -393,5 +421,6 @@ export function memberIndexSearchValues(index: MemberIndexV1): string[] {
 
 export function presentationIconReference(icon: MemberIndexV1['icon'] | MemberVaultMetadataV1['icon']): string | undefined {
   return icon?.kind === 'glyph' ? icon.value
-    : icon?.kind === 'encryptedAsset' ? `asset:${icon.assetId}` : undefined
+    : icon?.kind === 'encryptedAsset' ? `asset:${icon.assetId}`
+      : icon?.kind === 'publicAsset' ? publicAssetIconReference(icon) : undefined
 }

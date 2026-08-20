@@ -10,13 +10,13 @@
       }
     ],
     "component": {
-      "bom-ref": "pkg:npm/%40palladin/crypto@0.3.0",
+      "bom-ref": "pkg:npm/%40palladin/crypto@0.4.0",
       "type": "library",
       "group": "@palladin",
       "name": "crypto",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "description": "Candidate shared zero-knowledge crypto package for Palladin clients; consumer cutover is pending.",
-      "purl": "pkg:npm/%40palladin/crypto@0.3.0",
+      "purl": "pkg:npm/%40palladin/crypto@0.4.0",
       "licenses": [
         {
           "license": {
@@ -219,7 +219,7 @@
   ],
   "dependencies": [
     {
-      "ref": "pkg:npm/%40palladin/crypto@0.3.0",
+      "ref": "pkg:npm/%40palladin/crypto@0.4.0",
       "dependsOn": [
         "pkg:npm/%40scure/bip39@2.2.0",
         "pkg:npm/hash-wasm@4.12.0",

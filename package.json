@@ -1,6 +1,6 @@
 {
   "name": "@palladin/crypto",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Candidate shared zero-knowledge crypto package for Palladin clients; consumer cutover is pending.",
   "license": "Apache-2.0",
   "author": "Patryk Roguszewski <patryk.roguszewski@palladin.io>",
