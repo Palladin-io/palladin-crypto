@@ -5,6 +5,8 @@ import {
   projectAgentDiscovery,
   projectGrantPayload,
   projectMemberIndex,
+  parsePublicAssetIconReference,
+  presentationIconReference,
   type MemberSecretV1,
 } from './vault-plaintext'
 
@@ -58,6 +60,24 @@ describe('Vault plaintext v1', () => {
         { id: 'credential.username', value: 'member@example.com' },
       ],
     })
+  })
+
+  it('round-trips the canonical public-asset icon used by web-created Vault metadata', () => {
+    const publicAsset = {
+      kind: 'publicAsset',
+      assetId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      revision: 2,
+      url: 'https://assets.palladin.io/icons/example.svg?version=2',
+    } as const
+    const withPublicAsset: MemberSecretV1 = { ...secret, icon: publicAsset }
+
+    expect(parseMemberSecret(encodeMemberSecret(withPublicAsset))).toEqual(withPublicAsset)
+    const reference = presentationIconReference(publicAsset)
+    expect(reference).toBe(
+      'public-asset:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee|2|https%3A%2F%2Fassets.palladin.io%2Ficons%2Fexample.svg%3Fversion%3D2',
+    )
+    expect(parsePublicAssetIconReference(reference)).toEqual(publicAsset)
+    expect(parsePublicAssetIconReference(`${reference}|unexpected`)).toBeNull()
   })
 
   it('builds a sorted least-privilege GrantPayload and rejects Discovery fields', () => {
