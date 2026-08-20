@@ -73,11 +73,17 @@ describe('Vault plaintext v1', () => {
 
     expect(parseMemberSecret(encodeMemberSecret(withPublicAsset))).toEqual(withPublicAsset)
     const reference = presentationIconReference(publicAsset)
+    if (!reference) throw new Error('Expected a public-asset icon reference')
     expect(reference).toBe(
       'public-asset:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee|2|https%3A%2F%2Fassets.palladin.io%2Ficons%2Fexample.svg%3Fversion%3D2',
     )
     expect(parsePublicAssetIconReference(reference)).toEqual(publicAsset)
     expect(parsePublicAssetIconReference(`${reference}|unexpected`)).toBeNull()
+    expect(parsePublicAssetIconReference(reference.replace('|2|', '|02|'))).toBeNull()
+    expect(parsePublicAssetIconReference(reference.replace('|2|', '|2e0|'))).toBeNull()
+    expect(parsePublicAssetIconReference(
+      'public-asset:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee|2|https://assets.palladin.io/icons/example.svg',
+    )).toBeNull()
   })
 
   it('preserves the established glyph and encrypted-asset references', () => {

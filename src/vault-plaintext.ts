@@ -161,12 +161,13 @@ export function parsePublicAssetIconReference(reference: string | null | undefin
   const [assetId, revisionText, encodedUrl, ...rest] = reference.slice('public-asset:'.length).split('|')
   if (!assetId || !revisionText || !encodedUrl || rest.length > 0) return null
   try {
-    return publicAssetIcon.parse({
+    const parsed = publicAssetIcon.parse({
       kind: 'publicAsset',
       assetId,
       revision: Number(revisionText),
       url: decodeURIComponent(encodedUrl),
     })
+    return publicAssetIconReference(parsed) === reference ? parsed : null
   } catch {
     return null
   }
