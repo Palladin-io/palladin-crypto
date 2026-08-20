@@ -22,6 +22,7 @@ const context: BrowserSessionEnvelopeContext = {
   issuedAt: 1_700_000_000_000,
   expiresAt: 1_702_592_000_000,
 }
+const validTime = { now: () => context.issuedAt + 1_000 }
 
 describe('browser durable-session envelope', () => {
   it('round-trips under a domain-separated master-key subkey', async () => {
@@ -32,7 +33,7 @@ describe('browser durable-session envelope', () => {
       expect(envelope.protocolVersion).toBe(BROWSER_SESSION_ENVELOPE_PROTOCOL_VERSION)
       expect(JSON.stringify(envelope)).not.toContain('refreshToken')
       expect(JSON.stringify(envelope)).not.toContain('secret')
-      await expect(openBrowserSessionEnvelope(envelope, key)).resolves.toEqual(plaintext)
+      await expect(openBrowserSessionEnvelope(envelope, key, validTime)).resolves.toEqual(plaintext)
     } finally {
       wipe(key)
       wipe(plaintext)
@@ -57,7 +58,7 @@ describe('browser durable-session envelope', () => {
     ]
     try {
       for (const candidate of cases) {
-        await expect(openBrowserSessionEnvelope(candidate, key)).rejects.toThrow()
+        await expect(openBrowserSessionEnvelope(candidate, key, validTime)).rejects.toThrow()
       }
     } finally {
       wipe(key)
@@ -72,7 +73,7 @@ describe('browser durable-session envelope', () => {
     const plaintext = new TextEncoder().encode('session')
     const envelope = await sealBrowserSessionEnvelope(plaintext, key, context)
     try {
-      await expect(openBrowserSessionEnvelope(envelope, wrong)).rejects.toThrow()
+      await expect(openBrowserSessionEnvelope(envelope, wrong, validTime)).rejects.toThrow()
       expect(() => parseBrowserSessionEnvelope({ ...envelope, downgrade: true })).toThrow(
         'unexpected fields',
       )
@@ -97,6 +98,26 @@ describe('browser durable-session envelope', () => {
         ...context,
         clientId: 'browser-extension@palladin.io\nforged',
       })).rejects.toThrow('client ID')
+    } finally {
+      wipe(key)
+      wipe(plaintext)
+    }
+  })
+
+  it('rejects authenticated sessions before issuance and at or after expiry', async () => {
+    const key = new Uint8Array(32).fill(0x46)
+    const plaintext = new TextEncoder().encode('session')
+    const envelope = await sealBrowserSessionEnvelope(plaintext, key, context)
+    try {
+      await expect(openBrowserSessionEnvelope(envelope, key, {
+        now: () => context.issuedAt - 1,
+      })).rejects.toThrow('validity window')
+      await expect(openBrowserSessionEnvelope(envelope, key, {
+        now: () => context.expiresAt,
+      })).rejects.toThrow('validity window')
+      await expect(openBrowserSessionEnvelope(envelope, key, {
+        now: () => context.expiresAt - 1,
+      })).resolves.toEqual(plaintext)
     } finally {
       wipe(key)
       wipe(plaintext)

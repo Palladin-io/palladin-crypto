@@ -80,6 +80,14 @@ describe('Vault plaintext v1', () => {
     expect(parsePublicAssetIconReference(`${reference}|unexpected`)).toBeNull()
   })
 
+  it('preserves the established glyph and encrypted-asset references', () => {
+    expect(presentationIconReference({ kind: 'glyph', value: 'key' })).toBe('key')
+    expect(presentationIconReference({
+      kind: 'encryptedAsset',
+      assetId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+    })).toBe('asset:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee')
+  })
+
   it('builds a sorted least-privilege GrantPayload and rejects Discovery fields', () => {
     expect(projectGrantPayload(secret, ['credential.totp', 'credential.password'])).toEqual({
       schema: 'palladin.grant-payload.v1', entryType: 'credential',

@@ -41,6 +41,11 @@ export interface BrowserSessionEnvelope {
   readonly encodedSuitePayload: string
 }
 
+export interface BrowserSessionEnvelopeOpenOptions {
+  /** Injectable wall clock used only to enforce the authenticated validity window. */
+  readonly now?: () => number
+}
+
 class BinaryWriter {
   private readonly chunks: Uint8Array[] = []
   private length = 0
@@ -343,8 +348,16 @@ export async function sealBrowserSessionEnvelope(
 export async function openBrowserSessionEnvelope(
   value: unknown,
   masterKey: Uint8Array,
+  options: BrowserSessionEnvelopeOpenOptions = {},
 ): Promise<Uint8Array> {
   const envelope = parseBrowserSessionEnvelope(value)
+  const now = (options.now ?? Date.now)()
+  if (!Number.isSafeInteger(now) || now < 0) {
+    throw new TypeError('Browser session clock must return a non-negative safe integer')
+  }
+  if (now < envelope.context.issuedAt || now >= envelope.context.expiresAt) {
+    throw new TypeError('Browser session is outside its validity window')
+  }
   const aad = encodeContext(envelope.context, AAD_MAGIC) as CanonicalEnvelopeAad
   const payload = fromBase64Url(
     envelope.encodedSuitePayload,

@@ -419,7 +419,7 @@ export function memberIndexSearchValues(index: MemberIndexV1): string[] {
 }
 
 export function presentationIconReference(icon: MemberIndexV1['icon'] | MemberVaultMetadataV1['icon']): string | undefined {
-  return icon?.kind === 'glyph' ? `builtin:${icon.value}`
-    : icon?.kind === 'encryptedAsset' ? `vault-asset:${icon.assetId}`
+  return icon?.kind === 'glyph' ? icon.value
+    : icon?.kind === 'encryptedAsset' ? `asset:${icon.assetId}`
       : icon?.kind === 'publicAsset' ? publicAssetIconReference(icon) : undefined
 }
