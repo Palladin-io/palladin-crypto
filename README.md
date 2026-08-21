@@ -3,10 +3,9 @@
 Candidate shared zero-knowledge crypto package for Palladin clients, implemented
 with libsodium WASM.
 
-> [!WARNING]
-> This package has not been published to npm. Consumer cutover and Protocol 2
-> integration are pending. The web panel and browser extension do not yet use
-> this repository as their single source of client-side cryptography.
+The package is published to npm with signed provenance. The browser extension
+uses the reviewed registry release; remaining consumer cutovers must continue to
+verify byte compatibility against the protocol contracts before switching.
 
 All encryption and decryption in Palladin happens on the client. This repository
 is intended to centralize compatible primitives once each consumer's migration
@@ -38,11 +37,10 @@ reject unknown suite/version discriminators; there is no algorithm fallback.
 
 ## Install
 
-There is no registry release yet. After a reviewed release is published, the
-intended installation command will be:
+Install the exact reviewed release used by the consuming application:
 
 ```bash
-npm install @palladin/crypto
+npm install --save-exact @palladin/crypto@0.4.0
 ```
 
 ## Usage
