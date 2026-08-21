@@ -62,10 +62,11 @@ src/
 ## Build & test
 
 - `npm run build` / `npm run prepare` - tsup, emits ESM + CJS + `.d.ts` to `dist/`.
-- Public npm releases are planned from signed GitHub release tags through npm
-  trusted publishing with provenance. No registry release or consumer cutover
-  exists yet. Once published, consumers must use an exact semver range from the
-  registry - never a Git branch or commit dependency.
+- Public npm releases come from signed GitHub release tags through npm trusted
+  publishing with provenance. The browser extension consumes the reviewed
+  registry release; remaining consumer cutovers are still coordinated. Consumers
+  must use an exact semver range from the registry - never a Git branch or commit
+  dependency.
 - `npm test` — Vitest (node env). Includes RFC 6238 TOTP vectors and
   producer→consumer round-trips (derive→wrap→unwrap, seal→unseal, grant envelope
   decrypted as the agent would).
