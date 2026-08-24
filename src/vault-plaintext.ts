@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { scriptExecutionMetadataSchema } from './script-execution'
+import { scriptExecutionMetadataSchema } from './script-execution-metadata'
 
 export const AGENT_FIELD_ACCESS = [
   'never',
