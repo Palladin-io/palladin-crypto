@@ -6,6 +6,10 @@ describe('public Protocol 2 API', () => {
     expect(publicApi).toHaveProperty('encodeCanonicalEnvelopeAad')
     expect(publicApi).toHaveProperty('encodeCanonicalKdfContext')
     expect(publicApi).toHaveProperty('deriveVaultSubkey')
+    expect(publicApi).toHaveProperty('buildScriptExecutionManifest')
+    expect(publicApi).toHaveProperty('assertScriptExecutionPackage')
+    expect(publicApi).toHaveProperty('sealScriptExecutionPackage')
+    expect(publicApi).toHaveProperty('openScriptExecutionPackage')
 
     expect(publicApi).not.toHaveProperty('encodeVaultAad')
     expect(publicApi).not.toHaveProperty('assertEnvelopeBindings')
