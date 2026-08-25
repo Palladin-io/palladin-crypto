@@ -322,7 +322,7 @@ export function validateScriptExecutionParameters(
   for (const name of Object.keys(values)) {
     if (!known.has(name)) throw new Error('Script parameters contain an undeclared name')
   }
-  const validated: Record<string, string | number | boolean> = {}
+  const validated: Record<string, string | number | boolean> = Object.create(null) as Record<string, string | number | boolean>
   for (const definition of parsedDefinitions) {
     if (!Object.hasOwn(values, definition.name)) {
       if (definition.required) throw new Error('A required Script parameter is missing')
@@ -534,8 +534,14 @@ export async function openScriptExecutionPackage(
   const { encodedPackageCiphertext, producerSignature, ...outer } = encryptedPackage
   const transportBinding = normalizeTransportBinding(outer)
   assertExpectedContextMatchesTransport(expectedContext, transportBinding)
+  const maximumEncodedCiphertextLength = Math.ceil(SCRIPT_EXECUTION_PACKAGE_MAX_BYTES * 4 / 3)
   if (!(expectedContext.vaultSigningPublicKey instanceof Uint8Array)
     || expectedContext.vaultSigningPublicKey.length !== 32
+    || typeof encodedPackageCiphertext !== 'string'
+    || encodedPackageCiphertext.length === 0
+    || encodedPackageCiphertext.length > maximumEncodedCiphertextLength
+    || encodedPackageCiphertext.length % 4 === 1
+    || !/^[A-Za-z0-9_-]+$/.test(encodedPackageCiphertext)
     || !/^[A-Za-z0-9_-]{86}$/.test(producerSignature)) {
     throw new Error('Script execution package producer authentication is invalid')
   }

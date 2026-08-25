@@ -221,6 +221,18 @@ describe('Script execution package', () => {
     expect(() => validateScriptExecutionParameters(definitions, { activeOnly: true, limit: 25, role: 'owner' })).toThrow(/enum/)
   })
 
+  it('preserves a declared __proto__ parameter as an own canonical property', () => {
+    const definitions = [
+      { name: '__proto__', description: 'Literal value', type: 'string' as const, required: true },
+    ]
+    const input = JSON.parse('{"__proto__":"safe-literal"}') as unknown
+    const validated = validateScriptExecutionParameters(definitions, input)
+    expect(Object.hasOwn(validated, '__proto__')).toBe(true)
+    expect(validated.__proto__).toBe('safe-literal')
+    expect(new TextDecoder().decode(encodeScriptExecutionParameters(definitions, input)))
+      .toBe('{"__proto__":"safe-literal"}')
+  })
+
   it('binds exactly one authorization and the complete Script plus reference scope set', async () => {
     const value = manifest()
     const binding = await buildScriptExecutionPackageBinding(value, directAuthorization)
@@ -379,6 +391,15 @@ describe('Script execution package', () => {
       ...expectedContext(signer.publicKey, sealed),
       recipientAgentKeyVersion: 1,
     })).rejects.toThrow(/producer signature/)
+
+    const oversized = {
+      ...sealed,
+      encodedPackageCiphertext: 'A'.repeat(Math.ceil(2_097_152 * 4 / 3) + 1),
+    }
+    await expect(openScriptExecutionPackage(oversized, recipient.privateKey, {
+      ...expectedContext(signer.publicKey, sealed),
+      recipientAgentKeyVersion: 1,
+    })).rejects.toThrow(/producer authentication/)
   })
 
   it('rejects missing, cross-Vault, duplicate, stale and substituted material fail closed', async () => {
