@@ -349,7 +349,7 @@ export async function buildScriptExecutionPackageBinding(
   authorization: ScriptExecutionAuthorizationV1,
 ): Promise<ScriptExecutionPackageBindingV1> {
   const parsed = normalizeManifest(manifest)
-  const scopes = sortedUnique([
+  const scopes = sortedDeduplicatedScopes([
     {
       vaultId: parsed.vaultId,
       entryId: parsed.scriptEntryId,
@@ -357,7 +357,7 @@ export async function buildScriptExecutionPackageBinding(
       entryRevision: parsed.scriptRevision,
     },
     ...parsed.references.map(({ vaultId, entryId, fieldId, entryRevision }) => ({ vaultId, entryId, fieldId, entryRevision })),
-  ], scopeKey, 'Script package scopes')
+  ])
   return packageBindingSchema.parse({
     schema: 'palladin.script-execution-package-binding.v1',
     contractVersion: SCRIPT_EXECUTION_CONTRACT_VERSION,
@@ -602,11 +602,14 @@ export async function openScriptExecutionPackage(
     const parsed = parseCanonicalJson(plaintext, encryptedPackagePayloadSchema)
     const manifest = normalizeManifest(parsed.manifest)
     await assertScriptExecutionPackage(parsed.binding, manifest, parsed.binding.scopes)
-    openedEntries = parsed.entries.map((entry) => ({
-      entryId: entry.entryId,
-      entryRevision: entry.entryRevision,
-      encodedGrantPayload: fromBase64Url(entry.encodedGrantPayload, MAX_ENCODED_SUITE_PAYLOAD_BYTES),
-    }))
+    openedEntries = []
+    for (const entry of parsed.entries) {
+      openedEntries.push({
+        entryId: entry.entryId,
+        entryRevision: entry.entryRevision,
+        encodedGrantPayload: fromBase64Url(entry.encodedGrantPayload, MAX_ENCODED_SUITE_PAYLOAD_BYTES),
+      })
+    }
     assertReferenceEntriesMatchManifest(manifest, openedEntries)
     assertProjectedEntriesMatchManifest(manifest, openedEntries)
     assertTransportMatchesPayload(transportBinding, parsed.binding, manifest)
@@ -812,6 +815,22 @@ function structuralScopes(
     })
   }
   return [...scopes.values()].sort((left, right) => compareUtf8(left.entryId, right.entryId))
+}
+
+function sortedDeduplicatedScopes(
+  values: readonly ScriptExecutionPackageScopeV1[],
+): ScriptExecutionPackageScopeV1[] {
+  const scopes = new Map<string, ScriptExecutionPackageScopeV1>()
+  for (const value of values) {
+    const parsed = packageScopeSchema.parse(value)
+    const key = scopeKey(parsed)
+    const existing = scopes.get(key)
+    if (existing && canonicalJson(existing) !== canonicalJson(parsed)) {
+      throw new Error('Script package scopes contain conflicting revisions')
+    }
+    scopes.set(key, parsed)
+  }
+  return [...scopes.values()].sort((left, right) => compareUtf8(scopeKey(left), scopeKey(right)))
 }
 
 function assertTransportMatchesPayload(

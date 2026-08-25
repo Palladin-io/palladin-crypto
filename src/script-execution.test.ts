@@ -231,6 +231,29 @@ describe('Script execution package', () => {
     await expect(assertScriptExecutionPackage({ ...binding, agentId: organizationId }, value, opened)).rejects.toThrow(/does not match/)
   })
 
+  it('deduplicates one field referenced through multiple environment names', async () => {
+    const repeated = structuredClone(secret)
+    if (repeated.entryType !== 'script') throw new Error('fixture')
+    repeated.content.refs = [
+      { env: 'DB_PASSWORD', vaultId, entryId: passwordEntryId, fieldId: 'credential.password' },
+      { env: 'DB_PASSWORD_COPY', vaultId, entryId: passwordEntryId, fieldId: 'credential.password' },
+    ]
+    const repeatedManifest = buildScriptExecutionManifest({
+      organizationId,
+      agentId,
+      agentAccessEpoch: 3,
+      vaultId,
+      scriptEntryId,
+      scriptRevision: '7',
+      memberSecret: repeated,
+      referenceRevisions,
+    })
+
+    const binding = await buildScriptExecutionPackageBinding(repeatedManifest, directAuthorization)
+    expect(binding.scopes).toHaveLength(2)
+    expect(binding.scopes.filter((scope) => scope.fieldId === 'credential.password')).toHaveLength(1)
+  })
+
   it('preserves the durable direct grant identity on binding refresh and rejects per-Script FULL material', async () => {
     const current = await buildScriptExecutionPackageBinding(manifest(), directAuthorization)
     const nextManifest = { ...manifest(), scriptRevision: '8', description: 'Pobiera aktywnych użytkowników z bazy' }
@@ -347,7 +370,11 @@ describe('Script execution package', () => {
       packageRevision: '2',
       recipientAgentKeyVersion: 1,
     })).rejects.toThrow(/requested execution context/)
-    const forged = { ...sealed, producerSignature: `${sealed.producerSignature.slice(0, -1)}A` }
+    const signatureLast = sealed.producerSignature.at(-1)!
+    const forged = {
+      ...sealed,
+      producerSignature: `${sealed.producerSignature.slice(0, -1)}${signatureLast === 'A' ? 'B' : 'A'}`,
+    }
     await expect(openScriptExecutionPackage(forged, recipient.privateKey, {
       ...expectedContext(signer.publicKey, sealed),
       recipientAgentKeyVersion: 1,
