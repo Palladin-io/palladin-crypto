@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { scriptExecutionMetadataSchema } from './script-execution-metadata'
 
 export const AGENT_FIELD_ACCESS = [
   'never',
@@ -67,6 +68,7 @@ const scriptContent = z.object({
   source: normalizedString,
   interpreter: z.enum(['bash', 'sh', 'node', 'python']),
   refs: z.array(scriptRef),
+  execution: scriptExecutionMetadataSchema.optional(),
   notes: nullableString,
   customFields: z.array(customField),
 }).strict()

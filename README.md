@@ -29,6 +29,9 @@ protocol contracts remain authoritative for production behavior.
 - **Canonical Vault protocol 2** — versioned XChaCha20-Poly1305 envelopes,
   HKDF-SHA-256 subkeys, X25519 sealed-key wrappers, canonical AAD/JSON, and the
   MemberVaultMetadata, MemberIndex, MemberSecret, and AgentDiscovery projections.
+- **Script execution package** — canonical Script metadata, typed parameters,
+  direct/FULL authorization bindings and fail-closed whole-package verification
+  layered over the existing authenticated Vault and grant envelopes.
 
 Protocol 2 is additive in `0.2.x`. The legacy `0.1.x` operations keep their
 original byte format and remain available only for callers that have not yet
@@ -40,7 +43,7 @@ reject unknown suite/version discriminators; there is no algorithm fallback.
 Install the exact reviewed release used by the consuming application:
 
 ```bash
-npm install --save-exact @palladin/crypto@0.4.0
+npm install --save-exact @palladin/crypto@0.5.0
 ```
 
 ## Usage
