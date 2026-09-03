@@ -190,11 +190,11 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/zod@4.3.6",
+      "bom-ref": "pkg:npm/zod@4.4.3",
       "type": "library",
       "name": "zod",
-      "version": "4.3.6",
-      "purl": "pkg:npm/zod@4.3.6",
+      "version": "4.4.3",
+      "purl": "pkg:npm/zod@4.4.3",
       "scope": "required",
       "licenses": [
         {
@@ -206,13 +206,13 @@
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "adfb65ae484764e7230f090696752d65992f68f1c2b03013a78a46a6e38e3036937430d717dd70b950c9a16a0fb0a5ffdd83d0e5f1ee1774938dc6322abf9086"
+          "content": "cad10d163209165d94c1882575eda37215b61f09b818914b0e249759d4eb25004837d15cca9ee7e0387124489634024c575fc1a967d6fe4920ef55037072724d"
         }
       ],
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/zod/-/zod-4.3.6.tgz"
+          "url": "https://registry.npmjs.org/zod/-/zod-4.4.3.tgz"
         }
       ]
     }
@@ -224,7 +224,7 @@
         "pkg:npm/%40scure/bip39@2.2.0",
         "pkg:npm/hash-wasm@4.12.0",
         "pkg:npm/libsodium-wrappers@0.8.4",
-        "pkg:npm/zod@4.3.6"
+        "pkg:npm/zod@4.4.3"
       ]
     },
     {
@@ -257,7 +257,7 @@
       ]
     },
     {
-      "ref": "pkg:npm/zod@4.3.6",
+      "ref": "pkg:npm/zod@4.4.3",
       "dependsOn": []
     }
   ]
