@@ -23,6 +23,12 @@ describe('current Credential discovery contract', () => {
     expect(projectCanonicalCredentialDiscovery({ ...secret, discoverable: false, agentLabel: null,
       agentFieldAccess: { ...secret.agentFieldAccess, agentLabel: 'never', entryType: 'never' } })).toBeNull()
   })
+  it('preserves explicit empty strings as the current web contract does', () => {
+    expect(projectCanonicalCredentialDiscovery({ ...secret,
+      content: { ...secret.content, username: '', urlDomain: '' } })?.fields).toEqual([
+      { id: 'credential.urlDomain', value: '' }, { id: 'credential.username', value: '' },
+    ])
+  })
 
   it('seals the current discovery beside the unchanged MemberSecret', async () => {
     const vk = await randomBytes(32)

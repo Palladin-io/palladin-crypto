@@ -542,7 +542,7 @@ async function projectPayload(
 }
 
 function isRegisteredGrantPolicyField(type: VaultEntryTypeName, id: string): boolean {
-  if (id.startsWith('custom:')) return type !== 'creditCard'
+  if (id.startsWith('custom:')) return type !== 'creditCard' && customGrantFieldId.test(id)
   return type === 'key'
     ? id === 'key.value' || id === 'key.url' || id === 'notes'
     : type === 'credential'
