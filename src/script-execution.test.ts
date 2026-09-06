@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   assertScriptExecutionPackage,
   buildScriptExecutionManifest,
+  buildCanonicalScriptExecutionManifest,
   buildScriptExecutionPackageBinding,
   effectiveReturnResultToAgent,
   encodeScriptExecutionManifest,
@@ -10,8 +11,10 @@ import {
   openScriptExecutionPackage,
   parseScriptExecutionManifest,
   refreshScriptExecutionPackage,
+  refreshCanonicalScriptExecutionPackage,
   refreshScriptExecutionPackageBinding,
   sealScriptExecutionPackage,
+  sealCanonicalScriptExecutionPackage,
   scriptExecutionDiscovery,
   validateScriptExecutionParameters,
   type ScriptExecutionAuthorizationV1,
@@ -19,6 +22,8 @@ import {
 } from './script-execution'
 import { encodeMemberSecret, parseGrantPayload, type MemberSecretV1 } from './vault-plaintext'
 import { loadSodium } from './sodium-loader'
+import * as currentPlaintext from './current-vault-plaintext'
+import { wipe } from './sodium'
 
 const organizationId = '11111111-1111-4111-8111-111111111111'
 const agentId = '22222222-2222-4222-8222-222222222222'
@@ -163,6 +168,73 @@ function expectedContext(
 }
 
 describe('Script execution package', () => {
+  it('current manifest preserves the web legacy-description fallback without changing the old API', () => {
+    const legacy = structuredClone(secret)
+    if (legacy.entryType !== 'script') throw new Error('fixture')
+    delete legacy.content.execution
+    legacy.description = 'Legacy Script description'
+    const input = { organizationId, agentId, agentAccessEpoch: 3, vaultId, scriptEntryId,
+      scriptRevision: '7', memberSecret: legacy, referenceRevisions }
+    expect(() => buildScriptExecutionManifest(input)).toThrow('metadata is missing')
+    expect(buildCanonicalScriptExecutionManifest(input)).toMatchObject({
+      description: 'Legacy Script description', parameters: [], returnResultToAgent: false,
+    })
+  })
+  it('current Script MemberSecrets accept the registered Key URL reference without changing generic encoding', () => {
+    const withUrl = { ...secret, content: { ...secret.content,
+      refs: [{ env: 'KEY_URL', vaultId, entryId: portEntryId, fieldId: 'key.url' }] } }
+    expect(() => encodeMemberSecret(withUrl)).toThrow()
+    expect(currentPlaintext.parseMemberSecret(currentPlaintext.encodeMemberSecret(withUrl))).toEqual(withUrl)
+  })
+  it.each(['initial', 'refresh'])('current %s packages carry exact Discovery, Key URL and derived TOTP references', async (mode) => {
+    const sodium = await loadSodium()
+    const recipient = sodium.crypto_box_keypair()
+    const signer = sodium.crypto_sign_keypair()
+    const credential = { ...credentialReference, agentFieldAccess: { ...credentialReference.agentFieldAccess,
+      'credential.username': 'discovery' as const, 'credential.totp': 'onGrantDerived' as const },
+      content: { ...credentialReference.content,
+        totp: { secret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', algorithm: 'SHA1' as const, // RFC 6238 public vector; gitleaks:allow
+          digits: 8 as const, period: 30, issuer: null, account: null } } }
+    const key = { ...keyReference, content: { ...keyReference.content, url: 'https://key.example.test' },
+      agentFieldAccess: { ...keyReference.agentFieldAccess, 'key.url': 'onGrantValue' as const } }
+    const entries = packageEntries().map((entry) => ({ ...entry, encodedMemberSecret: currentPlaintext.encodeMemberSecret(
+      entry.entryId === portEntryId ? key : credential,
+    ) }))
+    const value = { ...manifest(), references: [...manifest().references,
+      { env: 'DB_URL', vaultId, entryId: portEntryId, entryRevision: referenceRevisions[portEntryId], fieldId: 'key.url' },
+      { env: 'DB_OTP', vaultId, entryId: passwordEntryId, entryRevision: '6', fieldId: 'credential.totp' }] }
+    let opened: Awaited<ReturnType<typeof openScriptExecutionPackage>> | undefined
+    try {
+      const input = { manifest: value, grantId: directAuthorization.grantId, packageRevision: '1',
+        recipientAgentKeyVersion: 2, recipientAgentPublicKey: recipient.publicKey,
+        vaultSigningKeyVersion: 5, vaultSigningPrivateKey: signer.privateKey, entries }
+      await expect(sealScriptExecutionPackage(input)).rejects.toThrow()
+      let sealed = await sealCanonicalScriptExecutionPackage(input)
+      if (mode === 'refresh') {
+        const next = { ...value, scriptRevision: '8' }
+        await expect(refreshScriptExecutionPackage(sealed, next, entries, recipient.publicKey, signer.privateKey)).rejects.toThrow()
+        sealed = await refreshCanonicalScriptExecutionPackage(sealed, next, entries, recipient.publicKey, signer.privateKey)
+        expect(sealed.packageRevision).toBe('2')
+        expect(sealed.grantId).toBe(input.grantId)
+      }
+      opened = await openScriptExecutionPackage(sealed, recipient.privateKey, expectedContext(signer.publicKey, sealed, sealed.scriptRevision))
+      const user = parseGrantPayload(opened.entries.find((entry) => entry.entryId === userEntryId)!.encodedGrantPayload)
+      expect(user.fields).toEqual([{ id: 'credential.username', kind: 'text', mode: 'value', value: credential.content.username }])
+      const password = parseGrantPayload(opened.entries.find((entry) => entry.entryId === passwordEntryId)!.encodedGrantPayload)
+      expect(password.fields.map((field) => field.id)).toEqual(['credential.password', 'credential.totp'])
+      expect(password.fields[1].value).toMatchObject({ code: expect.stringMatching(/^\d{8}$/), expiresIn: expect.any(Number) })
+      expect(JSON.stringify(password)).not.toContain(credential.content.totp.secret)
+      const port = parseGrantPayload(opened.entries.find((entry) => entry.entryId === portEntryId)!.encodedGrantPayload)
+      expect(port.fields).toEqual([
+        { id: 'key.url', kind: 'url', mode: 'value', value: key.content.url },
+        { id: 'key.value', kind: 'concealed', mode: 'value', value: '5432' },
+      ])
+    } finally {
+      wipe(recipient.privateKey); wipe(signer.privateKey)
+      for (const entry of entries) wipe(entry.encodedMemberSecret)
+      for (const entry of opened?.entries ?? []) wipe(entry.encodedGrantPayload)
+    }
+  })
   it('builds one canonical manifest and exposes only discovery metadata to the Agent', () => {
     const value = manifest()
     expect(value.parameters.map((item) => item.name)).toEqual(['activeOnly', 'limit', 'role'])
@@ -382,10 +454,10 @@ describe('Script execution package', () => {
       packageRevision: '2',
       recipientAgentKeyVersion: 1,
     })).rejects.toThrow(/requested execution context/)
-    const signatureLast = sealed.producerSignature.at(-1)!
+    const signatureFirst = sealed.producerSignature[0]
     const forged = {
       ...sealed,
-      producerSignature: `${sealed.producerSignature.slice(0, -1)}${signatureLast === 'A' ? 'B' : 'A'}`,
+      producerSignature: `${signatureFirst === 'A' ? 'B' : 'A'}${sealed.producerSignature.slice(1)}`,
     }
     await expect(openScriptExecutionPackage(forged, recipient.privateKey, {
       ...expectedContext(signer.publicKey, sealed),

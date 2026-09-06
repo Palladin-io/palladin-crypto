@@ -40,10 +40,59 @@ reject unknown suite/version discriminators; there is no algorithm fallback.
 
 ## Install
 
-Install the exact reviewed release used by the consuming application:
+The CVT-573 branch prepares `0.6.0`; it is not a published release yet. Its new
+Credential write APIs share the default web Agent policy and build GRANULAR
+replacement envelopes for the canonical API. FULL uses a Vault-key grant and
+does not require per-entry replacement envelopes. ScriptExecution packages
+remain a separate atomic write input.
+
+`buildCanonicalGrantEnvelope` uses `encodeDeliveryBoundGrantAad`, matching the
+deployed backend's `EnvelopeDescriptorCodecTests` vector including DeliveryPolicy.
+The existing `encodeCanonicalEnvelopeAad` and `projectGrantPayload` exports retain
+their original byte format. The new `projectCanonicalGrantPayload` adapter uses
+production namespaced notes and derived TOTP codes, never TOTP seeds. Do not use
+the older generic projection for this new write path.
+
+`sealCanonicalCredentialEntry` and `projectCanonicalCredentialDiscovery` produce
+the current web Credential discovery contract (Get/Exec/Inject, null/undefined
+values omitted, explicit empty strings preserved). The original generic Entry/discovery APIs retain their existing
+behavior. `defaultCredentialAgentFieldAccess` also owns custom-field defaults.
+
+`currentVaultPlaintext` exposes the current web plaintext contract separately
+from the byte-stable generic exports. `openCurrentMemberSecret` accepts current
+Key URL metadata. `buildCanonicalScriptExecutionManifest` preserves the web's
+legacy-description fallback, and `sealCanonicalScriptExecutionPackage` projects
+exact approved references, including Discovery values and derived TOTP codes.
+`refreshCanonicalScriptExecutionPackage` retains that projection when incrementing
+the package revision. The generic Script package producer/refresher retain their
+original projection behavior. Current Script references also accept the registered
+`key.url` field. TOTP generation clears its owned decoded-key and digest buffers;
+immutable JavaScript strings and internal hash-wasm allocations are GC-managed.
+
+Readable legacy custom-field UUIDs may contain uppercase, but canonical grant
+field IDs require lowercase. Grant choices exclude noncanonical IDs rather than
+silently rewriting identity or weakening the receiver's field-set commitment.
+
+Known existing contract limitation: current web TOTP projection stores a code
+and relative `expiresIn` at package construction time, not a durable source for
+future derivation. This extraction preserves that behavior; it does not make a
+stored TOTP code fresh at delayed delivery/execution. Changing delivery timing or
+adding authenticated absolute expiry requires a coordinated producer/consumer
+contract change outside CVT-573. Generic legacy exports are not a fallback for
+the current no-seed payload contract.
+
+Local consumer acceptance covers atomic Entry replacement inputs with GRANULAR
+envelopes and complete dependent ScriptExecution packages. Publication still
+requires security review and the signed-tag release workflow; local tarball
+validation is not evidence of a released registry dependency.
+
+Consumer adoption and registry installation must follow the reviewed, signed
+`0.6.0` release; a feature-branch dependency is not a supported installation.
+
+After the reviewed `0.6.0` release is published, install its exact registry version:
 
 ```bash
-npm install --save-exact @palladin/crypto@0.5.0
+npm install --save-exact @palladin/crypto@0.6.0
 ```
 
 ## Usage

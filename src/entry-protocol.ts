@@ -2,10 +2,12 @@ import { VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
 import { ENVELOPE_PURPOSE } from './envelope'
 import { deriveVaultSubkey } from './hkdf'
 import { randomBytes, wipe } from './sodium'
+import * as currentPlaintext from './current-vault-plaintext'
+import { projectCanonicalCredentialDiscovery, type CredentialMemberSecret } from './credential-discovery'
 import {
   encodeAgentDiscovery, encodeMemberIndex, encodeMemberSecret,
   parseMemberIndex, parseMemberSecret, projectAgentDiscovery, projectMemberIndex,
-  type MemberIndexV1, type MemberSecretV1,
+  type AgentDiscoveryV1, type MemberIndexV1, type MemberSecretV1,
 } from './vault-plaintext'
 import { assertEnvelopeScope, openVaultEnvelope, sealVaultEnvelope, type EnvelopeDescriptorContract, type VaultEnvelopeContract } from './vault-envelope'
 
@@ -82,6 +84,27 @@ export async function sealCanonicalEntry(
   vaultDiscoveryKey: Uint8Array,
   operation: 1 | 2 | 3 | 4 | 5,
 ): Promise<CanonicalEntryEnvelopes> {
+  return sealEntry(coordinates, secret, vaultKey, vaultDiscoveryKey, operation, () => projectAgentDiscovery(secret))
+}
+
+export async function sealCanonicalCredentialEntry(
+  coordinates: EntryCryptoCoordinates,
+  secret: CredentialMemberSecret,
+  vaultKey: Uint8Array,
+  vaultDiscoveryKey: Uint8Array,
+  operation: 1 | 2 | 3 | 4 | 5,
+): Promise<CanonicalEntryEnvelopes> {
+  return sealEntry(coordinates, secret, vaultKey, vaultDiscoveryKey, operation, () => projectCanonicalCredentialDiscovery(secret))
+}
+
+async function sealEntry(
+  coordinates: EntryCryptoCoordinates,
+  secret: MemberSecretV1,
+  vaultKey: Uint8Array,
+  vaultDiscoveryKey: Uint8Array,
+  operation: 1 | 2 | 3 | 4 | 5,
+  projectDiscovery: () => AgentDiscoveryV1 | null,
+): Promise<CanonicalEntryEnvelopes> {
   const entryDek = await randomBytes(32)
   let entryWrapKey: Uint8Array | undefined
   let indexKey: Uint8Array | undefined
@@ -92,7 +115,7 @@ export async function sealCanonicalEntry(
   let discoveryBytes: Uint8Array | null | undefined
   try {
     const index = projectMemberIndex(secret)
-    const discovery = projectAgentDiscovery(secret)
+    const discovery = projectDiscovery()
     const keyCoordinates = { ...coordinates, revision: coordinates.entryKeyRevision ?? coordinates.revision }
     const indexCoordinates = { ...coordinates, revision: coordinates.memberIndexRevision ?? coordinates.revision }
     const discoveryCoordinates = { ...coordinates, revision: coordinates.agentDiscoveryRevision ?? coordinates.revision }
@@ -160,6 +183,25 @@ export async function openMemberSecret(
   vaultKey: Uint8Array,
   expected: ExpectedEntryEnvelopeCoordinates,
 ): Promise<MemberSecretV1> {
+  return openEntrySecret(entryKey, memberSecret, vaultKey, expected, parseMemberSecret)
+}
+
+export async function openCurrentMemberSecret(
+  entryKey: VaultEnvelopeContract<VaultKeyBinding>,
+  memberSecret: VaultEnvelopeContract<MemberSecretBinding>,
+  vaultKey: Uint8Array,
+  expected: ExpectedEntryEnvelopeCoordinates,
+): Promise<currentPlaintext.MemberSecretV1> {
+  return openEntrySecret(entryKey, memberSecret, vaultKey, expected, currentPlaintext.parseMemberSecret)
+}
+
+async function openEntrySecret<T>(
+  entryKey: VaultEnvelopeContract<VaultKeyBinding>,
+  memberSecret: VaultEnvelopeContract<MemberSecretBinding>,
+  vaultKey: Uint8Array,
+  expected: ExpectedEntryEnvelopeCoordinates,
+  decode: (bytes: Uint8Array) => T,
+): Promise<T> {
   assertEntryEnvelope(entryKey.descriptor, expected, ENVELOPE_PURPOSE.entryDekByVk)
   assertEntryEnvelope(memberSecret.descriptor, expected, ENVELOPE_PURPOSE.memberSecret)
   if (entryKey.descriptor.keyVersion !== memberSecret.descriptor.keyVersion
@@ -173,7 +215,7 @@ export async function openMemberSecret(
       const secretKey = await derived(dek, memberSecret.descriptor)
       try {
         const bytes = await openVaultEnvelope(memberSecret, secretKey, { operation: memberSecret.descriptor.binding.operation })
-        try { return parseMemberSecret(bytes) } finally { bytes.fill(0) }
+        try { return decode(bytes) } finally { bytes.fill(0) }
       } finally { wipe(secretKey) }
     } finally { wipe(dek) }
   } finally { wipe(wrapKey) }
