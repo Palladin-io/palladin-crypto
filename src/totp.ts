@@ -171,20 +171,26 @@ export async function generateTotp(
   const counter = Math.floor(seconds / period)
 
   const key = base32Decode(params.secret)
-  const hmac = await createHMAC(hashFor(params.algorithm), key)
-  hmac.init()
-  hmac.update(counterToBytes(counter))
-  const digest = hmac.digest('binary')
+  let digest: Uint8Array | undefined
+  try {
+    const hmac = await createHMAC(hashFor(params.algorithm), key)
+    hmac.init()
+    hmac.update(counterToBytes(counter))
+    digest = hmac.digest('binary')
 
-  // Dynamic truncation (RFC 4226 §5.3).
-  const offset = digest[digest.length - 1] & 0x0f
-  const binary =
-    ((digest[offset] & 0x7f) << 24) |
-    ((digest[offset + 1] & 0xff) << 16) |
-    ((digest[offset + 2] & 0xff) << 8) |
-    (digest[offset + 3] & 0xff)
+    // Dynamic truncation (RFC 4226 §5.3).
+    const offset = digest[digest.length - 1] & 0x0f
+    const binary =
+      ((digest[offset] & 0x7f) << 24) |
+      ((digest[offset + 1] & 0xff) << 16) |
+      ((digest[offset + 2] & 0xff) << 8) |
+      (digest[offset + 3] & 0xff)
 
-  const code = (binary % 10 ** digits).toString().padStart(digits, '0')
-  const expiresIn = period - (seconds % period)
-  return { code, expiresIn, period }
+    const code = (binary % 10 ** digits).toString().padStart(digits, '0')
+    const expiresIn = period - (seconds % period)
+    return { code, expiresIn, period }
+  } finally {
+    key.fill(0)
+    digest?.fill(0)
+  }
 }

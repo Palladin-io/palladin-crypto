@@ -11,6 +11,7 @@ import {
   openScriptExecutionPackage,
   parseScriptExecutionManifest,
   refreshScriptExecutionPackage,
+  refreshCanonicalScriptExecutionPackage,
   refreshScriptExecutionPackageBinding,
   sealScriptExecutionPackage,
   sealCanonicalScriptExecutionPackage,
@@ -179,7 +180,13 @@ describe('Script execution package', () => {
       description: 'Legacy Script description', parameters: [], returnResultToAgent: false,
     })
   })
-  it('current packages carry exact Discovery references and derived TOTP, accepting current Key URL content', async () => {
+  it('current Script MemberSecrets accept the registered Key URL reference without changing generic encoding', () => {
+    const withUrl = { ...secret, content: { ...secret.content,
+      refs: [{ env: 'KEY_URL', vaultId, entryId: portEntryId, fieldId: 'key.url' }] } }
+    expect(() => encodeMemberSecret(withUrl)).toThrow()
+    expect(currentPlaintext.parseMemberSecret(currentPlaintext.encodeMemberSecret(withUrl))).toEqual(withUrl)
+  })
+  it.each(['initial', 'refresh'])('current %s packages carry exact Discovery, Key URL and derived TOTP references', async (mode) => {
     const sodium = await loadSodium()
     const recipient = sodium.crypto_box_keypair()
     const signer = sodium.crypto_sign_keypair()
@@ -194,6 +201,7 @@ describe('Script execution package', () => {
       entry.entryId === portEntryId ? key : credential,
     ) }))
     const value = { ...manifest(), references: [...manifest().references,
+      { env: 'DB_URL', vaultId, entryId: portEntryId, entryRevision: referenceRevisions[portEntryId], fieldId: 'key.url' },
       { env: 'DB_OTP', vaultId, entryId: passwordEntryId, entryRevision: '6', fieldId: 'credential.totp' }] }
     let opened: Awaited<ReturnType<typeof openScriptExecutionPackage>> | undefined
     try {
@@ -201,8 +209,15 @@ describe('Script execution package', () => {
         recipientAgentKeyVersion: 2, recipientAgentPublicKey: recipient.publicKey,
         vaultSigningKeyVersion: 5, vaultSigningPrivateKey: signer.privateKey, entries }
       await expect(sealScriptExecutionPackage(input)).rejects.toThrow()
-      const sealed = await sealCanonicalScriptExecutionPackage(input)
-      opened = await openScriptExecutionPackage(sealed, recipient.privateKey, expectedContext(signer.publicKey, sealed))
+      let sealed = await sealCanonicalScriptExecutionPackage(input)
+      if (mode === 'refresh') {
+        const next = { ...value, scriptRevision: '8' }
+        await expect(refreshScriptExecutionPackage(sealed, next, entries, recipient.publicKey, signer.privateKey)).rejects.toThrow()
+        sealed = await refreshCanonicalScriptExecutionPackage(sealed, next, entries, recipient.publicKey, signer.privateKey)
+        expect(sealed.packageRevision).toBe('2')
+        expect(sealed.grantId).toBe(input.grantId)
+      }
+      opened = await openScriptExecutionPackage(sealed, recipient.privateKey, expectedContext(signer.publicKey, sealed, sealed.scriptRevision))
       const user = parseGrantPayload(opened.entries.find((entry) => entry.entryId === userEntryId)!.encodedGrantPayload)
       expect(user.fields).toEqual([{ id: 'credential.username', kind: 'text', mode: 'value', value: credential.content.username }])
       const password = parseGrantPayload(opened.entries.find((entry) => entry.entryId === passwordEntryId)!.encodedGrantPayload)
@@ -210,8 +225,10 @@ describe('Script execution package', () => {
       expect(password.fields[1].value).toMatchObject({ code: expect.stringMatching(/^\d{8}$/), expiresIn: expect.any(Number) })
       expect(JSON.stringify(password)).not.toContain(credential.content.totp.secret)
       const port = parseGrantPayload(opened.entries.find((entry) => entry.entryId === portEntryId)!.encodedGrantPayload)
-      expect(port.fields).toEqual([{ id: 'key.value', kind: 'concealed', mode: 'value', value: '5432' }])
-      expect(JSON.stringify(port)).not.toContain(key.content.url)
+      expect(port.fields).toEqual([
+        { id: 'key.url', kind: 'url', mode: 'value', value: key.content.url },
+        { id: 'key.value', kind: 'concealed', mode: 'value', value: '5432' },
+      ])
     } finally {
       wipe(recipient.privateKey); wipe(signer.privateKey)
       for (const entry of entries) wipe(entry.encodedMemberSecret)

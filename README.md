@@ -63,7 +63,11 @@ from the byte-stable generic exports. `openCurrentMemberSecret` accepts current
 Key URL metadata. `buildCanonicalScriptExecutionManifest` preserves the web's
 legacy-description fallback, and `sealCanonicalScriptExecutionPackage` projects
 exact approved references, including Discovery values and derived TOTP codes.
-The generic Script package producer retains its original projection behavior.
+`refreshCanonicalScriptExecutionPackage` retains that projection when incrementing
+the package revision. The generic Script package producer/refresher retain their
+original projection behavior. Current Script references also accept the registered
+`key.url` field. TOTP generation clears its owned decoded-key and digest buffers;
+immutable JavaScript strings and internal hash-wasm allocations are GC-managed.
 
 Local consumer acceptance covers atomic Entry replacement inputs with GRANULAR
 envelopes and complete dependent ScriptExecution packages. Publication still

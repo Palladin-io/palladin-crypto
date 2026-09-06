@@ -64,7 +64,7 @@ const scriptRef = z.object({
   env: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
   vaultId: z.string().uuid(),
   entryId: z.string().uuid(),
-  fieldId: normalizedString.regex(/^(?:memberLabel|agentLabel|description|icon|color|entryType|key\.value|credential\.(?:username|password|url|urlDomain|totp)|creditCard\.(?:cardholderName|cardNumber|expiryMonth|expiryYear|billingAddress)|notes|script\.(?:source|interpreter|refs)|custom:[0-9a-f-]{36})$/),
+  fieldId: normalizedString.regex(/^(?:memberLabel|agentLabel|description|icon|color|entryType|key\.(?:value|url)|credential\.(?:username|password|url|urlDomain|totp)|creditCard\.(?:cardholderName|cardNumber|expiryMonth|expiryYear|billingAddress)|notes|script\.(?:source|interpreter|refs)|custom:[0-9a-f-]{36})$/),
 }).strict()
 const scriptContent = z.object({
   source: normalizedString,

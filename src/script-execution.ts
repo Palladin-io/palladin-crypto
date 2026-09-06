@@ -681,6 +681,31 @@ export async function refreshScriptExecutionPackage(
   vaultSigningPrivateKey: Uint8Array,
   vaultSigningKeyVersion = previous.vaultSigningKeyVersion,
 ): Promise<ScriptExecutionEncryptedPackageV1> {
+  return refreshPackage(previous, nextManifest, entries, recipientAgentPublicKey,
+    vaultSigningPrivateKey, vaultSigningKeyVersion, sealScriptExecutionPackage)
+}
+
+export async function refreshCanonicalScriptExecutionPackage(
+  previous: ScriptExecutionEncryptedPackageV1,
+  nextManifest: ScriptExecutionManifestV1,
+  entries: readonly ScriptExecutionPackageReferenceInput[],
+  recipientAgentPublicKey: Uint8Array,
+  vaultSigningPrivateKey: Uint8Array,
+  vaultSigningKeyVersion = previous.vaultSigningKeyVersion,
+): Promise<ScriptExecutionEncryptedPackageV1> {
+  return refreshPackage(previous, nextManifest, entries, recipientAgentPublicKey,
+    vaultSigningPrivateKey, vaultSigningKeyVersion, sealCanonicalScriptExecutionPackage)
+}
+
+async function refreshPackage(
+  previous: ScriptExecutionEncryptedPackageV1,
+  nextManifest: ScriptExecutionManifestV1,
+  entries: readonly ScriptExecutionPackageReferenceInput[],
+  recipientAgentPublicKey: Uint8Array,
+  vaultSigningPrivateKey: Uint8Array,
+  vaultSigningKeyVersion: number,
+  seal: typeof sealScriptExecutionPackage,
+): Promise<ScriptExecutionEncryptedPackageV1> {
   const current = normalizeTransportBinding(previous)
   const next = normalizeManifest(nextManifest)
   if (current.organizationId !== next.organizationId
@@ -692,7 +717,7 @@ export async function refreshScriptExecutionPackage(
   }
   const packageRevision = BigInt(current.packageRevision)
   if (packageRevision >= 0xffffffffffffffffn) throw new RangeError('Script package revision is exhausted')
-  return sealScriptExecutionPackage({
+  return seal({
     manifest: next,
     grantId: current.grantId,
     packageRevision: String(packageRevision + 1n),
