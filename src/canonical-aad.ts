@@ -160,6 +160,7 @@ function writeExtension(
   writer: BinaryWriter,
   descriptor: EnvelopeDescriptor,
   extension: EnvelopeAadExtension,
+  grantDeliveryPolicy?: 0 | 1 | 2,
 ): void {
   switch (descriptor.purpose) {
     case ENVELOPE_PURPOSE.memberSecret: {
@@ -196,6 +197,7 @@ function writeExtension(
       writer.u32(value.recipientKeyVersion)
       writer.bytes(exactBytes(value.recipientKeyFingerprint, 32, 'Recipient key fingerprint'))
       writer.u16(value.methods)
+      if (grantDeliveryPolicy !== undefined) writer.u16(grantDeliveryPolicy)
       writer.bytes(exactBytes(value.fieldSetCommitment, 32, 'Field-set commitment'))
       writer.u8(value.expiresAt === undefined ? 0 : 1)
       if (value.expiresAt) {
@@ -222,6 +224,21 @@ export function encodeCanonicalEnvelopeAad(
   const writer = new BinaryWriter()
   writeBase(writer, descriptor)
   writeExtension(writer, descriptor, extension)
+  return writer.finish() as CanonicalEnvelopeAad
+}
+
+// The deployed canonical API binds DeliveryPolicy; the published generic v2 encoder remains byte-stable.
+export function encodeDeliveryBoundGrantAad(
+  descriptor: EnvelopeDescriptor,
+  extension: GrantAadExtension & { deliveryPolicy: 0 | 1 | 2 },
+): CanonicalEnvelopeAad {
+  if (descriptor.purpose !== ENVELOPE_PURPOSE.grant) throw new TypeError('Expected Grant descriptor')
+  if (extension.deliveryPolicy !== 0 && extension.deliveryPolicy !== 1 && extension.deliveryPolicy !== 2) {
+    throw new TypeError('Unsupported Grant delivery policy')
+  }
+  const writer = new BinaryWriter()
+  writeBase(writer, descriptor)
+  writeExtension(writer, descriptor, extension, extension.deliveryPolicy)
   return writer.finish() as CanonicalEnvelopeAad
 }
 
@@ -271,4 +288,3 @@ export async function computeFieldSetCommitment(fieldIds: readonly string[]): Pr
   digestInput.set(input)
   return new Uint8Array(await crypto.subtle.digest('SHA-256', digestInput.buffer))
 }
-

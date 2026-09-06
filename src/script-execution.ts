@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import * as currentPlaintext from './current-vault-plaintext'
 
 import { MAX_ENCODED_SUITE_PAYLOAD_BYTES, requireCryptoSuite, VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
 import { fromBase64Url, toBase64Url } from './encoding'
@@ -239,6 +240,24 @@ export function effectiveReturnResultToAgent(metadata: Pick<ScriptExecutionMetad
   return metadata?.returnResultToAgent === true
 }
 
+export function normalizeScriptExecutionMetadata(value: unknown, legacyDescription?: string | null): ScriptExecutionMetadataV1 {
+  const normalized = value ?? (legacyDescription?.trim() ? {
+    contractVersion: SCRIPT_EXECUTION_CONTRACT_VERSION, description: legacyDescription.trim(),
+    parameters: [], returnResultToAgent: false,
+  } : value)
+  const parsed = scriptExecutionMetadataSchema.parse(normalized)
+  const parameters = sortedUnique(parsed.parameters, (item) => item.name, 'Script parameter names')
+  validateParameterDefinitions(parameters)
+  return { ...parsed, description: parsed.description.trim(), parameters }
+}
+
+export function buildCanonicalScriptExecutionManifest(input: BuildScriptExecutionManifestInput): ScriptExecutionManifestV1 {
+  if (input.memberSecret.entryType !== 'script') throw new Error('Entry is not a Script')
+  const metadata = normalizeScriptExecutionMetadata(input.memberSecret.content.execution, input.memberSecret.description)
+  return normalizeManifest(buildScriptExecutionManifest({ ...input, memberSecret: { ...input.memberSecret,
+    content: { ...input.memberSecret.content, execution: metadata } } }))
+}
+
 export function buildScriptExecutionManifest(input: BuildScriptExecutionManifestInput): ScriptExecutionManifestV1 {
   if (input.memberSecret.entryType !== 'script') throw new Error('Entry is not a Script')
   const metadata = input.memberSecret.content.execution
@@ -410,6 +429,22 @@ export async function assertScriptExecutionPackage(
 export async function sealScriptExecutionPackage(
   input: SealScriptExecutionPackageInput,
 ): Promise<ScriptExecutionEncryptedPackageV1> {
+  return sealPackage(input, (bytes, fields) => encodeGrantPayload(projectGrantPayload(parseMemberSecret(bytes), fields)))
+}
+
+export async function sealCanonicalScriptExecutionPackage(
+  input: SealScriptExecutionPackageInput,
+): Promise<ScriptExecutionEncryptedPackageV1> {
+  return sealPackage(input, async (bytes, fields) => currentPlaintext.encodeScriptReferencePayload(
+    await currentPlaintext.projectScriptReferencePayload(currentPlaintext.parseMemberSecret(bytes), fields),
+  ))
+}
+
+type ReferenceProjector = (bytes: Uint8Array, fields: readonly string[]) => Uint8Array | Promise<Uint8Array>
+
+async function sealPackage(
+  input: SealScriptExecutionPackageInput, projectReference: ReferenceProjector,
+): Promise<ScriptExecutionEncryptedPackageV1> {
   const manifest = normalizeManifest(input.manifest)
   const authorization = authorizationSchema.parse({ source: 'scriptExecution', grantId: input.grantId })
   const binding = await buildScriptExecutionPackageBinding(manifest, authorization)
@@ -435,7 +470,7 @@ export async function sealScriptExecutionPackage(
       vaultSigningPublicKey,
       VAULT_KEY_KIND.vaultSigningEd25519,
     )
-    projectedEntries = projectReferenceEntries(manifest, entries)
+    projectedEntries = await projectReferenceEntries(manifest, entries, projectReference)
     const transportBinding = normalizeTransportBinding({
       contractVersion: SCRIPT_EXECUTION_CONTRACT_VERSION,
       organizationId: manifest.organizationId,
@@ -735,10 +770,11 @@ function normalizeReferenceInputs(
   }
 }
 
-function projectReferenceEntries(
+async function projectReferenceEntries(
   manifest: ScriptExecutionManifestV1,
   entries: readonly ScriptExecutionPackageReferenceInput[],
-): OpenedScriptExecutionReferenceV1[] {
+  projectReference: ReferenceProjector,
+): Promise<OpenedScriptExecutionReferenceV1[]> {
   const fieldIdsByEntry = new Map<string, Set<string>>()
   for (const reference of manifest.references) {
     const fieldIds = fieldIdsByEntry.get(reference.entryId) ?? new Set<string>()
@@ -750,14 +786,14 @@ function projectReferenceEntries(
     for (const entry of entries) {
       const fieldIds = fieldIdsByEntry.get(entry.entryId)
       if (!fieldIds) throw new Error('Script package referenced Entries are incomplete')
-      const payload = projectGrantPayload(
-        parseMemberSecret(entry.encodedMemberSecret),
+      const encodedGrantPayload = await projectReference(
+        entry.encodedMemberSecret,
         [...fieldIds].sort(compareUtf8),
       )
       projected.push({
         entryId: entry.entryId,
         entryRevision: entry.entryRevision,
-        encodedGrantPayload: encodeGrantPayload(payload),
+        encodedGrantPayload,
       })
     }
     return projected

@@ -69,6 +69,11 @@ export * from './vault-protocol'
 export * from './entry-protocol'
 export * from './script-execution'
 export * from './browser-session-envelope'
+export * from './grant-protocol'
+export * from './credential-policy'
+export * from './credential-discovery'
+export * from './canonical-grant-payload'
+export * as currentVaultPlaintext from './current-vault-plaintext'
 
 // --- Entry encryption ---
 export { encryptEntry, decryptEntry } from './entry-crypto'

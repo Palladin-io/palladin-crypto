@@ -40,6 +40,39 @@ reject unknown suite/version discriminators; there is no algorithm fallback.
 
 ## Install
 
+The CVT-573 branch prepares `0.6.0`; it is not a published release yet. Its new
+Credential write APIs share the default web Agent policy and build GRANULAR
+replacement envelopes for the canonical API. FULL uses a Vault-key grant and
+does not require per-entry replacement envelopes. ScriptExecution packages
+remain a separate atomic write input.
+
+`buildCanonicalGrantEnvelope` uses `encodeDeliveryBoundGrantAad`, matching the
+deployed backend's `EnvelopeDescriptorCodecTests` vector including DeliveryPolicy.
+The existing `encodeCanonicalEnvelopeAad` and `projectGrantPayload` exports retain
+their original byte format. The new `projectCanonicalGrantPayload` adapter uses
+production namespaced notes and derived TOTP codes, never TOTP seeds. Do not use
+the older generic projection for this new write path.
+
+`sealCanonicalCredentialEntry` and `projectCanonicalCredentialDiscovery` produce
+the current web Credential discovery contract (Get/Exec/Inject, absent values
+omitted). The original generic Entry/discovery APIs retain their existing
+behavior. `defaultCredentialAgentFieldAccess` also owns custom-field defaults.
+
+`currentVaultPlaintext` exposes the current web plaintext contract separately
+from the byte-stable generic exports. `openCurrentMemberSecret` accepts current
+Key URL metadata. `buildCanonicalScriptExecutionManifest` preserves the web's
+legacy-description fallback, and `sealCanonicalScriptExecutionPackage` projects
+exact approved references, including Discovery values and derived TOTP codes.
+The generic Script package producer retains its original projection behavior.
+
+Local consumer acceptance covers atomic Entry replacement inputs with GRANULAR
+envelopes and complete dependent ScriptExecution packages. Publication still
+requires security review and the signed-tag release workflow; local tarball
+validation is not evidence of a released registry dependency.
+
+Consumer adoption and registry installation must follow the reviewed, signed
+`0.6.0` release; a feature-branch dependency is not a supported installation.
+
 Install the exact reviewed release used by the consuming application:
 
 ```bash
