@@ -89,10 +89,10 @@ validation is not evidence of a released registry dependency.
 Consumer adoption and registry installation must follow the reviewed, signed
 `0.6.0` release; a feature-branch dependency is not a supported installation.
 
-Install the exact reviewed release used by the consuming application:
+After the reviewed `0.6.0` release is published, install its exact registry version:
 
 ```bash
-npm install --save-exact @palladin/crypto@0.5.0
+npm install --save-exact @palladin/crypto@0.6.0
 ```
 
 ## Usage
