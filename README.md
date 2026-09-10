@@ -127,7 +127,7 @@ Licensed under [Apache-2.0](./LICENSE). See [NOTICE](./NOTICE),
 
 ## Candidate browser shared unlock transport (0.7.0)
 
-`createSharedUnlockParticipant` provides one ephemeral, in-memory MK transfer
+`createSharedUnlockOffer(...).bind(expected)` provides one ephemeral, in-memory MK transfer
 using X25519, HKDF-SHA-256 and XChaCha20-Poly1305. The source and recipient use
 independently authorized `SharedUnlockContext` values and peer public keys from
 the verified browser channel. Both transfer directions bind the full context,
@@ -155,3 +155,9 @@ commit once for the same Identity operation, binding the full MK transcript hash
 challenge and lifetime. `assertCurrent` remains mandatory. This local ordering
 complements the required server-side atomic consume; it does not replace it.
 Independent Node-generated proof vectors are also consumed by the .NET verifier.
+
+Bootstrap starts with `createSharedUnlockOffer`: generate both public DH offers,
+let Identity authorize the resulting transcript, then call `bind(expected)` once
+using that independent authority. `hashSharedUnlockTranscript` supplies the exact
+SHA-256 binding for the receiver proof. Offers expire after 30 seconds even if a
+later operation has a newer expiry; rebinding or disposal cancels their key. An offer itself grants no authority and contains no MK.

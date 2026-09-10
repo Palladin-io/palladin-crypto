@@ -2,11 +2,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import rawFixture from './fixtures/shared-unlock-v1/fixtures.json'
 import { loadSodium } from './sodium-loader'
 import { fromBase64Url, toBase64Url } from './encoding'
-import { createSharedUnlockParticipant, encodeSharedUnlockTranscript } from './shared-unlock'
+import { createSharedUnlockOffer, encodeSharedUnlockTranscript, hashSharedUnlockTranscript } from './shared-unlock'
 import type { SharedUnlockContext, SharedUnlockEnvelope } from './shared-unlock'
 
+async function createParticipant(options: Parameters<typeof createSharedUnlockOffer>[0] & { expected: SharedUnlockContext }) {
+  const offer = await createSharedUnlockOffer(options)
+  return offer.bind(options.expected)
+}
+
 const fixture = rawFixture as {
-  positive: { name: string; nowMs: number; synthetic: { sourcePrivateKey: string; recipientPrivateKey: string; masterKey: string }; transcript: string; envelope: SharedUnlockEnvelope }[]
+  positive: { name: string; nowMs: number; synthetic: { sourcePrivateKey: string; recipientPrivateKey: string; masterKey: string }; transcript: string; salt: string; envelope: SharedUnlockEnvelope }[]
   negative: { name: string; mutation?: string; field?: string }[]
 }
 afterEach(() => vi.restoreAllMocks())
@@ -14,16 +19,17 @@ const bytes = fromBase64Url
 const rejection = 'Shared unlock operation rejected'
 for (const vector of fixture.positive) {
   const expected = vector.envelope.context
-  const create = async (role: 'source' | 'recipient', extra: Partial<Parameters<typeof createSharedUnlockParticipant>[0]> = {}) => {
+  const create = async (role: 'source' | 'recipient', extra: Partial<Parameters<typeof createParticipant>[0]> = {}) => {
     const sodium = await loadSodium()
     const privateKey = bytes(role === 'source' ? vector.synthetic.sourcePrivateKey : vector.synthetic.recipientPrivateKey)
     // Production calls the byte-output overload; test-only deterministic keypair.
     vi.spyOn(sodium, 'crypto_kx_keypair').mockImplementationOnce((() => ({ privateKey, publicKey: sodium.crypto_scalarmult_base(privateKey), keyType: 'x25519' })) as typeof sodium.crypto_kx_keypair)
-    return createSharedUnlockParticipant({ role, expected, assertCurrent: () => {}, now: () => vector.nowMs, ...extra })
+    return createParticipant({ role, expected, assertCurrent: () => {}, now: () => vector.nowMs, ...extra })
   }
   describe(vector.name, () => {
     it('matches independently generated transcript and opens Node X25519/HKDF fixture', async () => {
       expect(toBase64Url(encodeSharedUnlockTranscript(expected, vector.envelope.sourcePublicKey, vector.envelope.recipientPublicKey))).toBe(vector.transcript)
+      expect(await hashSharedUnlockTranscript(expected, vector.envelope.sourcePublicKey, vector.envelope.recipientPublicKey)).toBe(vector.salt)
       const recipient = await create('recipient')
       const masterKey = await recipient.open(vector.envelope, vector.envelope.sourcePublicKey)
       expect(toBase64Url(masterKey)).toBe(vector.synthetic.masterKey)
@@ -126,7 +132,7 @@ for (const vector of fixture.positive) {
         { webOrigin: 'http://example.test' }, { apiOrigin: `${expected.apiOrigin}/` },
         { linkEpoch: Number.MAX_SAFE_INTEGER + 1 }, { webGeneration: `${expected.webGeneration}=` },
       ]
-      for (const patch of patches) await expect(createSharedUnlockParticipant({ role: 'recipient', expected: { ...expected, ...patch }, assertCurrent: () => {} })).rejects.toThrow(rejection)
+      for (const patch of patches) await expect(createParticipant({ role: 'recipient', expected: { ...expected, ...patch }, assertCurrent: () => {} })).rejects.toThrow(rejection)
     })
     it('requires the final authority check after decryption', async () => {
       let checks = 0
@@ -136,3 +142,37 @@ for (const vector of fixture.positive) {
     })
   })
 }
+
+
+describe('public offers before Identity authorization', () => {
+  const expected = fixture.positive[0].envelope.context
+  const clock = () => expected.issuedAtMs
+  it('creates both public keys first, then binds server-authorized context and transfers MK', async () => {
+    const sourceOffer = await createSharedUnlockOffer({ role: 'source', assertCurrent: () => {}, now: clock })
+    const recipientOffer = await createSharedUnlockOffer({ role: 'recipient', assertCurrent: () => {}, now: clock })
+    expect(bytes(sourceOffer.publicKey).length).toBe(32)
+    expect(bytes(recipientOffer.publicKey).length).toBe(32)
+    const transcriptHash = await hashSharedUnlockTranscript(expected, sourceOffer.publicKey, recipientOffer.publicKey)
+    expect(bytes(transcriptHash).length).toBe(32)
+    const source = sourceOffer.bind(expected)
+    const recipient = recipientOffer.bind(expected)
+    const masterKey = bytes(fixture.positive[0].synthetic.masterKey)
+    const envelope = await source.seal(masterKey, recipient.publicKey)
+    expect(await recipient.open(envelope, source.publicKey)).toEqual(masterKey)
+  })
+  it('rejects rebinding an offer and cancels its original participant', async () => {
+    const offer = await createSharedUnlockOffer({ role: 'source', assertCurrent: () => {}, now: clock })
+    const source = offer.bind(expected)
+    expect(() => offer.bind({ ...expected, operationId: `9${expected.operationId.slice(1)}` })).toThrow(rejection)
+    await expect(source.seal(bytes(fixture.positive[0].synthetic.masterKey), fixture.positive[0].envelope.recipientPublicKey)).rejects.toThrow(rejection)
+  })
+  it('rejects disposed or expired offers, even with a freshly issued operation', async () => {
+    let time = expected.issuedAtMs
+    const expired = await createSharedUnlockOffer({ role: 'recipient', assertCurrent: () => {}, now: () => time })
+    time += 30_000
+    expect(() => expired.bind({ ...expected, issuedAtMs: time, expiresAtMs: time + 30_000 })).toThrow(rejection)
+    const disposed = await createSharedUnlockOffer({ role: 'recipient', assertCurrent: () => {}, now: clock })
+    disposed.dispose()
+    expect(() => disposed.bind(expected)).toThrow(rejection)
+  })
+})

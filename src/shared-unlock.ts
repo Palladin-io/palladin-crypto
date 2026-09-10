@@ -110,6 +110,12 @@ export function encodeSharedUnlockTranscript(expected: SharedUnlockContext, sour
   bytes(recipientPublicKey, 32)
   return encode([SHARED_UNLOCK_PROTOCOL, SHARED_UNLOCK_SUITE, ...fields.map(field => c[field]), sourcePublicKey, recipientPublicKey])
 }
+/** Hash the independently authorized complete MK transcript for the Identity proof. */
+export async function hashSharedUnlockTranscript(expected: SharedUnlockContext, sourcePublicKey: string, recipientPublicKey: string): Promise<string> {
+  const transcript = new Uint8Array(encodeSharedUnlockTranscript(expected, sourcePublicKey, recipientPublicKey))
+  return toBase64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', transcript)))
+}
+
 async function derive(shared: Uint8Array<ArrayBuffer>, transcript: Uint8Array<ArrayBuffer>, direction: SharedUnlockDirection): Promise<Uint8Array> {
   try {
     const salt = await crypto.subtle.digest('SHA-256', transcript)
@@ -135,85 +141,106 @@ export interface SharedUnlockParticipant {
  * The caller must recheck current authority after awaiting open, immediately before
  * installing the MK, and wipe the returned buffer when installation is cancelled.
  * This primitive neither authenticates a browser nor issues an Identity session. */
-export async function createSharedUnlockParticipant(options: {
+export interface SharedUnlockOffer {
+  readonly publicKey: string
+  bind(expected: SharedUnlockContext): SharedUnlockParticipant
+  dispose(): void
+}
+
+/** Generate the public DH offer before Identity authorizes the transcript. Binding
+ * then consumes that offer exactly once. An unbound offer contains no authority;
+ * adapters dispose it on peer loss/cancellation and must never persist it. */
+export async function createSharedUnlockOffer(options: {
   role: 'source' | 'recipient'
-  expected: SharedUnlockContext
   assertCurrent: (expected: Readonly<SharedUnlockContext>) => void
   now?: () => number
-}): Promise<SharedUnlockParticipant> {
-  const expected = context(options.expected)
+}): Promise<SharedUnlockOffer> {
   const { role, assertCurrent } = options
   if (!['source', 'recipient'].includes(role) || typeof assertCurrent !== 'function') invalid()
   const now = options.now ?? Date.now
   const sodium = await loadSodium()
+  const createdAt = now()
+  if (!Number.isSafeInteger(createdAt) || createdAt <= 0) invalid()
   const pair = sodium.crypto_kx_keypair()
   const publicKey = toBase64Url(pair.publicKey)
-  let used = false
+  let bound = false
   let disposed = false
   function dispose() { disposed = true; sodium.memzero(pair.privateKey) }
-  function check() {
-    const time = now()
-    if (disposed || !Number.isSafeInteger(time) || time < expected.issuedAtMs || time >= expected.expiresAtMs) invalid()
-    assertCurrent(expected)
-  }
-  function take(required: typeof role) {
-    if (used || role !== required) invalid()
-    used = true
-    check()
-  }
-  async function exchange(peer: string, source: string, recipient: string) {
-    const transcript = encodeSharedUnlockTranscript(expected, source, recipient)
-    const shared = sodium.crypto_scalarmult(pair.privateKey, bytes(peer, 32))
-    try { return { transcript, key: await derive(new Uint8Array(shared), new Uint8Array(transcript), expected.direction) } }
-    finally { sodium.memzero(shared) }
-  }
-  try { check() } catch { dispose(); return invalid() }
   return {
-    publicKey,
-    dispose,
-    async seal(masterKey, peer) {
-      // Copy before any await so caller mutation cannot change the encrypted MK.
-      let plain: Uint8Array | undefined
-      let key: Uint8Array | undefined
+    publicKey, dispose,
+    bind(expectedInput) {
+      let expected: SharedUnlockContext
       try {
-        take('source')
-        if (!(masterKey instanceof Uint8Array) || masterKey.length !== 32) invalid()
-        plain = new Uint8Array(masterKey)
-        const derived = await exchange(peer, publicKey, peer)
-        key = derived.key
+        if (bound || disposed) invalid()
+        bound = true
+        expected = context(expectedInput)
+      } catch { dispose(); return invalid() }
+      let used = false
+      function check() {
+        const time = now()
+        if (disposed || time < createdAt || time - createdAt >= 30_000 || !Number.isSafeInteger(time) || time < expected.issuedAtMs || time >= expected.expiresAtMs) invalid()
+        assertCurrent(expected)
+      }
+      function take(required: typeof role) {
+        if (used || role !== required) invalid()
+        used = true
         check()
-        const nonce = sodium.randombytes_buf(24)
-        const ciphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(plain, derived.transcript, null, nonce, key)
-        return { protocol: SHARED_UNLOCK_PROTOCOL, suite: SHARED_UNLOCK_SUITE,
-          context: { ...expected }, sourcePublicKey: publicKey, recipientPublicKey: peer,
-          nonce: toBase64Url(nonce), ciphertext: toBase64Url(ciphertext) }
-      } catch { return invalid() }
-      finally { if (plain) sodium.memzero(plain); if (key) sodium.memzero(key); dispose() }
-    },
-    async open(envelope, peer) {
-      let key: Uint8Array | undefined
-      let plain: Uint8Array | undefined
-      try {
-        take('recipient')
-        exact(envelope, envelopeFields)
-        if (envelope.protocol !== SHARED_UNLOCK_PROTOCOL || envelope.suite !== SHARED_UNLOCK_SUITE ||
-            envelope.sourcePublicKey !== peer || envelope.recipientPublicKey !== publicKey) invalid()
-        const received = context(envelope.context)
-        if (fields.some(field => received[field] !== expected[field])) invalid()
-        // Decode/copy attacker-controlled inputs before awaiting derivation.
-        const nonce = bytes(envelope.nonce, 24)
-        const ciphertext = bytes(envelope.ciphertext, 48)
-        const derived = await exchange(peer, peer, publicKey)
-        key = derived.key
-        check()
-        plain = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ciphertext, derived.transcript, nonce, key)
-        if (plain.length !== 32) invalid()
-        check()
-        const result = plain
-        plain = undefined
-        return result
-      } catch { return invalid() }
-      finally { if (plain) sodium.memzero(plain); if (key) sodium.memzero(key); dispose() }
+      }
+      async function exchange(peer: string, source: string, recipient: string) {
+        const transcript = encodeSharedUnlockTranscript(expected, source, recipient)
+        const shared = sodium.crypto_scalarmult(pair.privateKey, bytes(peer, 32))
+        try { return { transcript, key: await derive(new Uint8Array(shared), new Uint8Array(transcript), expected.direction) } }
+        finally { sodium.memzero(shared) }
+      }
+      try { check() } catch { dispose(); return invalid() }
+      return {
+        publicKey,
+        dispose,
+        async seal(masterKey, peer) {
+          // Copy before any await so caller mutation cannot change the encrypted MK.
+          let plain: Uint8Array | undefined
+          let key: Uint8Array | undefined
+          try {
+            take('source')
+            if (!(masterKey instanceof Uint8Array) || masterKey.length !== 32) invalid()
+            plain = new Uint8Array(masterKey)
+            const derived = await exchange(peer, publicKey, peer)
+            key = derived.key
+            check()
+            const nonce = sodium.randombytes_buf(24)
+            const ciphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(plain, derived.transcript, null, nonce, key)
+            return { protocol: SHARED_UNLOCK_PROTOCOL, suite: SHARED_UNLOCK_SUITE,
+              context: { ...expected }, sourcePublicKey: publicKey, recipientPublicKey: peer,
+              nonce: toBase64Url(nonce), ciphertext: toBase64Url(ciphertext) }
+          } catch { return invalid() }
+          finally { if (plain) sodium.memzero(plain); if (key) sodium.memzero(key); dispose() }
+        },
+        async open(envelope, peer) {
+          let key: Uint8Array | undefined
+          let plain: Uint8Array | undefined
+          try {
+            take('recipient')
+            exact(envelope, envelopeFields)
+            if (envelope.protocol !== SHARED_UNLOCK_PROTOCOL || envelope.suite !== SHARED_UNLOCK_SUITE ||
+                envelope.sourcePublicKey !== peer || envelope.recipientPublicKey !== publicKey) invalid()
+            const received = context(envelope.context)
+            if (fields.some(field => received[field] !== expected[field])) invalid()
+            // Decode/copy attacker-controlled inputs before awaiting derivation.
+            const nonce = bytes(envelope.nonce, 24)
+            const ciphertext = bytes(envelope.ciphertext, 48)
+            const derived = await exchange(peer, peer, publicKey)
+            key = derived.key
+            check()
+            plain = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ciphertext, derived.transcript, nonce, key)
+            if (plain.length !== 32) invalid()
+            check()
+            const result = plain
+            plain = undefined
+            return result
+          } catch { return invalid() }
+          finally { if (plain) sodium.memzero(plain); if (key) sodium.memzero(key); dispose() }
+        },
+      }
     },
   }
 }
