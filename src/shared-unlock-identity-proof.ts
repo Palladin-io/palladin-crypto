@@ -71,14 +71,15 @@ export async function createSharedUnlockIdentityProofSigner(options: {
   const sodium = await loadSodium()
   const pair = sodium.crypto_sign_keypair()
   const publicKey = toBase64Url(pair.publicKey)
-  let stage: 'initial' | 'consumed' | 'disposed' = 'initial'
+  let stage: 'initial' | 'consumed' | 'signing' | 'disposed' = 'initial'
   let bound: Readonly<SharedUnlockIdentityProofContext> | undefined
   function dispose() { stage = 'disposed'; sodium.memzero(pair.privateKey) }
   return {
     publicKey, dispose,
     sign(expected, purpose) {
       try {
-        if (stage === 'disposed' || (stage === 'initial' ? purpose !== 'consume' : purpose !== 'commit')) reject()
+        if (stage === 'disposed' || stage === 'signing' || (stage === 'initial' ? purpose !== 'consume' : purpose !== 'commit')) reject()
+        stage = 'signing'
         const current = snapshot(expected)
         if (bound && fields.some(field => bound![field] !== current[field])) reject()
         const time = now()

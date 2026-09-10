@@ -90,3 +90,21 @@ it('freezes a separate authority snapshot', async () => {
   expect(Object.isFrozen(received)).toBe(true)
   expect(() => participant.sign(mutable, 'commit')).toThrow(rejection)
 })
+for (const replacement of [false, true]) {
+  it(`burns a reentrant consume attempt with ${replacement ? 'another' : 'the same'} context`, async () => {
+    let nested = false
+    let invoke = () => {}
+    const signatures: string[] = []
+    const { participant, privateKey } = await signer({ assertCurrent: () => {
+      if (nested) return
+      nested = true
+      try { invoke() } catch { /* An adapter may catch cancellation; the outer attempt must still fail. */ }
+    } })
+    const other = replacement ? { ...context, operationId: `9${context.operationId.slice(1)}` } : context
+    invoke = () => { signatures.push(participant.sign(other, 'consume')) }
+    expect(() => participant.sign(context, 'consume')).toThrow(rejection)
+    expect(signatures).toEqual([])
+    expect(() => participant.sign(context, 'commit')).toThrow(rejection)
+    expect(privateKey.every(value => value === 0)).toBe(true)
+  })
+}
