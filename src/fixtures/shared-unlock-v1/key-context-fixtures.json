@@ -1,0 +1,183 @@
+{
+  "warning": "Generated deterministic synthetic public and encrypted test material. Never use in production.",
+  "positive": [
+    {
+      "context": {
+        "accountId": "11111111-1111-4111-8111-111111111111",
+        "securityVersion": 1,
+        "minimumSecurityVersion": 1,
+        "kdfProfileId": "identity-argon2id-password-v1",
+        "kdfSalt": "IiIiIiIiIiIiIiIiIiIiIg",
+        "credentialRevision": 3,
+        "privateKeyWrapRevision": 5,
+        "memberKeyVersion": 7,
+        "publicKey": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+        "encryptedPrivateKey": "RERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERE"
+      },
+      "message": "AAAAJXBhbGxhZGluLnNoYXJlZC11bmxvY2sua2V5LWNvbnRleHQudjEAAAAkMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExAAAAATEAAAABMQAAAB1pZGVudGl0eS1hcmdvbjJpZC1wYXNzd29yZC12MQAAABZJaUlpSWlJaUlpSWlJaUlpSWlJaUlnAAAAATMAAAABNQAAAAE3AAAAK016TXpNek16TXpNek16TXpNek16TXpNek16TXpNek16TXpNek16TXpNek0AAABgUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJF",
+      "digest": "x4puAvksU7wwTMOo8n5-OrMZUlXYA5dwaWNhqd7ovX0"
+    }
+  ],
+  "substitutions": [
+    {
+      "field": "accountId",
+      "context": {
+        "accountId": "22222222-2222-4222-8222-222222222222",
+        "securityVersion": 1,
+        "minimumSecurityVersion": 1,
+        "kdfProfileId": "identity-argon2id-password-v1",
+        "kdfSalt": "IiIiIiIiIiIiIiIiIiIiIg",
+        "credentialRevision": 3,
+        "privateKeyWrapRevision": 5,
+        "memberKeyVersion": 7,
+        "publicKey": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+        "encryptedPrivateKey": "RERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERE"
+      },
+      "digest": "pPMd1R_foM3p8YGQTs7LNXJAHNWjFKvMOqCcWvpgqQQ"
+    },
+    {
+      "field": "securityVersion",
+      "context": {
+        "accountId": "11111111-1111-4111-8111-111111111111",
+        "securityVersion": 2,
+        "minimumSecurityVersion": 1,
+        "kdfProfileId": "identity-argon2id-password-v1",
+        "kdfSalt": "IiIiIiIiIiIiIiIiIiIiIg",
+        "credentialRevision": 3,
+        "privateKeyWrapRevision": 5,
+        "memberKeyVersion": 7,
+        "publicKey": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+        "encryptedPrivateKey": "RERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERE"
+      },
+      "digest": "gTwQdz_9hK3b_GB8KabAnT1jNYrkDj9AWndfxUC7a7Q"
+    },
+    {
+      "field": "minimumSecurityVersion",
+      "context": {
+        "accountId": "11111111-1111-4111-8111-111111111111",
+        "securityVersion": 1,
+        "minimumSecurityVersion": 2,
+        "kdfProfileId": "identity-argon2id-password-v1",
+        "kdfSalt": "IiIiIiIiIiIiIiIiIiIiIg",
+        "credentialRevision": 3,
+        "privateKeyWrapRevision": 5,
+        "memberKeyVersion": 7,
+        "publicKey": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+        "encryptedPrivateKey": "RERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERE"
+      },
+      "digest": "M4iQpeuk5g3Ii33OOApHegVO8_k-xBqvNMVXYEUqKiw"
+    },
+    {
+      "field": "kdfProfileId",
+      "context": {
+        "accountId": "11111111-1111-4111-8111-111111111111",
+        "securityVersion": 1,
+        "minimumSecurityVersion": 1,
+        "kdfProfileId": "identity-argon2id-password-v1x",
+        "kdfSalt": "IiIiIiIiIiIiIiIiIiIiIg",
+        "credentialRevision": 3,
+        "privateKeyWrapRevision": 5,
+        "memberKeyVersion": 7,
+        "publicKey": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+        "encryptedPrivateKey": "RERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERE"
+      },
+      "digest": "1rWm5wE0StvhB4oMTE7SjDsb27QdhHWsvw29R39ApA4"
+    },
+    {
+      "field": "kdfSalt",
+      "context": {
+        "accountId": "11111111-1111-4111-8111-111111111111",
+        "securityVersion": 1,
+        "minimumSecurityVersion": 1,
+        "kdfProfileId": "identity-argon2id-password-v1",
+        "kdfSalt": "IiIiIiIiIiIiIiIiIiIiIgx",
+        "credentialRevision": 3,
+        "privateKeyWrapRevision": 5,
+        "memberKeyVersion": 7,
+        "publicKey": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+        "encryptedPrivateKey": "RERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERE"
+      },
+      "digest": "5G40Qx5xk-tO2t3Vg_0V83HX5FKL7QJUu1u-Fnbc0zM"
+    },
+    {
+      "field": "credentialRevision",
+      "context": {
+        "accountId": "11111111-1111-4111-8111-111111111111",
+        "securityVersion": 1,
+        "minimumSecurityVersion": 1,
+        "kdfProfileId": "identity-argon2id-password-v1",
+        "kdfSalt": "IiIiIiIiIiIiIiIiIiIiIg",
+        "credentialRevision": 4,
+        "privateKeyWrapRevision": 5,
+        "memberKeyVersion": 7,
+        "publicKey": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+        "encryptedPrivateKey": "RERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERE"
+      },
+      "digest": "-hnWK8T9wG53cH3fnNXTsQ5CdYox2m3WSC8nbvANGjo"
+    },
+    {
+      "field": "privateKeyWrapRevision",
+      "context": {
+        "accountId": "11111111-1111-4111-8111-111111111111",
+        "securityVersion": 1,
+        "minimumSecurityVersion": 1,
+        "kdfProfileId": "identity-argon2id-password-v1",
+        "kdfSalt": "IiIiIiIiIiIiIiIiIiIiIg",
+        "credentialRevision": 3,
+        "privateKeyWrapRevision": 6,
+        "memberKeyVersion": 7,
+        "publicKey": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+        "encryptedPrivateKey": "RERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERE"
+      },
+      "digest": "n42WGwnyeN38BBISmoPuVXXYBPLyC-Cy_8xGBQhpEws"
+    },
+    {
+      "field": "memberKeyVersion",
+      "context": {
+        "accountId": "11111111-1111-4111-8111-111111111111",
+        "securityVersion": 1,
+        "minimumSecurityVersion": 1,
+        "kdfProfileId": "identity-argon2id-password-v1",
+        "kdfSalt": "IiIiIiIiIiIiIiIiIiIiIg",
+        "credentialRevision": 3,
+        "privateKeyWrapRevision": 5,
+        "memberKeyVersion": 8,
+        "publicKey": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+        "encryptedPrivateKey": "RERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERE"
+      },
+      "digest": "a4dX5Op4fDmRXLh2YedeCRrdXjALM86Vvv8bV5VIPEI"
+    },
+    {
+      "field": "publicKey",
+      "context": {
+        "accountId": "11111111-1111-4111-8111-111111111111",
+        "securityVersion": 1,
+        "minimumSecurityVersion": 1,
+        "kdfProfileId": "identity-argon2id-password-v1",
+        "kdfSalt": "IiIiIiIiIiIiIiIiIiIiIg",
+        "credentialRevision": 3,
+        "privateKeyWrapRevision": 5,
+        "memberKeyVersion": 7,
+        "publicKey": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMx",
+        "encryptedPrivateKey": "RERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERE"
+      },
+      "digest": "10Se86WrHcgCegWIRKiKrqRXNfqd9fU6dKUGLWpOnA0"
+    },
+    {
+      "field": "encryptedPrivateKey",
+      "context": {
+        "accountId": "11111111-1111-4111-8111-111111111111",
+        "securityVersion": 1,
+        "minimumSecurityVersion": 1,
+        "kdfProfileId": "identity-argon2id-password-v1",
+        "kdfSalt": "IiIiIiIiIiIiIiIiIiIiIg",
+        "credentialRevision": 3,
+        "privateKeyWrapRevision": 5,
+        "memberKeyVersion": 7,
+        "publicKey": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+        "encryptedPrivateKey": "REREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREx"
+      },
+      "digest": "RZIj8NBipCKA7y3jZfOt3ISKNhxk6F5BZldeCkz8t30"
+    }
+  ]
+}

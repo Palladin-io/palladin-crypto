@@ -124,3 +124,58 @@ for the full rules and [`SECURITY.md`](./SECURITY.md) for responsible disclosure
 Licensed under [Apache-2.0](./LICENSE). See [NOTICE](./NOTICE),
 [third-party notices](./THIRD_PARTY_NOTICES.md), and the
 [trademark policy](./TRADEMARKS.md).
+
+## Candidate browser shared unlock transport (0.7.0)
+
+`createSharedUnlockOffer(...).bind(expected)` provides one ephemeral, in-memory MK transfer
+using X25519, HKDF-SHA-256 and XChaCha20-Poly1305. The source and recipient use
+independently authorized `SharedUnlockContext` values and peer public keys from
+the verified browser channel. Both transfer directions bind the full context,
+use distinct key derivation domains, and expire within 30 seconds. A participant
+allows one attempt and is disposed on success, failure or explicit cancellation.
+
+This API is a crypto primitive, **not a browser authenticator or Identity login
+API**. Callers must implement `assertCurrent`, recheck current authority after
+awaiting `open` and before installing the returned MK, and wipe a cancelled
+result. It must reject lock/logout/off/revoke, changed account, environment,
+document/generation, authorization or expired inherited limits. Persistent
+markers, copied tokens and possession of an MK cannot authorize a new session.
+
+The candidate contract and generated synthetic vectors are owned by
+[palladin-protocol](https://github.com/Palladin-io/palladin-protocol/tree/2eae10ac35d57b0bcdaea5b3b5e207ad16120221/contracts/shared-unlock).
+The fixture copy in `src/fixtures/shared-unlock-v1/` is test-only and excluded
+from the package. The contract remains candidate pending the complete Identity
+bootstrap/lifecycle contract, browser integration and release verification;
+The contract source is pinned to the immutable commit above; package release
+provenance and fixture digests must be verified before consumer cutover. Existing
+Vault, Identity KDF and Agent Inject operations are unchanged.
+
+`createSharedUnlockIdentityProofSigner` generates the separate, RAM-only Ed25519
+receiver proof key before source authorization. It signs consume once and then
+commit once for the same Identity operation, binding the full MK transcript hash,
+challenge and lifetime. `assertCurrent` remains mandatory. This local ordering
+complements the required server-side atomic consume; it does not replace it.
+Independent Node-generated proof vectors are also consumed by the .NET verifier.
+
+Bootstrap starts with `createSharedUnlockOffer`: generate both public DH offers,
+let Identity authorize the resulting transcript, then call `bind(expected)` once
+using that independent authority. `hashSharedUnlockTranscript` supplies the exact
+SHA-256 binding for the receiver proof. Offers expire after 30 seconds even if a
+later operation has a newer expiry; rebinding or disposal cancels their key. An offer itself grants no authority and contains no MK.
+
+`hashSharedUnlockKeyContext` and `encodeSharedUnlockKeyContext` bind Identity's
+current account descriptor (KDF metadata, account/key revisions, public key and
+private-key ciphertext) to the authorized MK operation. The typed encoder follows
+`palladin.shared-unlock.key-context.v1`; it does not duplicate server-owned account
+validation or authenticate a peer. Get the descriptor directly from Identity,
+check the independently selected account and compare the digest with the current
+operation authority before using recovered keys. Never treat a descriptor inside
+a peer payload or encrypted envelope as its own expected authority. Node golden
+vectors cover exact bytes and substitution of every field, with matching .NET
+consumer tests. No plaintext private key or MK is included in this descriptor.
+
+Pinned synthetic fixture SHA-256 digests (excluded from the npm package):
+
+- `fixtures.json`: `a601282fec02f545ccf03dc5d3ddbe078ed7589965a7b0ae40af95854780c332`
+- `identity-proof-fixtures.json`: `0ffa563b9f72db2ca68b9197c4fb7dbfc907294dec6b61861ab57e41c83e426f`
+- `key-context-fixtures.json`: `9ce4c1b5626b899f21518c16657afb690e12fc6ddd1d213cacaf35cfad491020`

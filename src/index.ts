@@ -60,6 +60,7 @@ export { toBase64, fromBase64, toBase64Url, fromBase64Url } from './encoding'
 export * from './crypto-suite'
 export * from './canonical-aad'
 export * from './inject-provider-channel'
+export * from './shared-unlock'
 export * from './envelope'
 export * from './hkdf'
 export * from './vault-envelope'
@@ -131,3 +132,7 @@ export type {
   EntryPlaintextV2Common,
   EntryPlaintext,
 } from './payload-types'
+
+// --- Browser shared unlock receiver proof (candidate Identity contract) ---
+export * from './shared-unlock-identity-proof'
+export * from './shared-unlock-key-context'

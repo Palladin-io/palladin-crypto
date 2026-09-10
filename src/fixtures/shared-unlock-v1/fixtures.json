@@ -1,0 +1,265 @@
+{
+  "warning": "Generated synthetic test data. Never use in production.",
+  "positive": [
+    {
+      "name": "web-to-extension",
+      "nowMs": 1800000000001,
+      "synthetic": {
+        "sourcePrivateKey": "ERERERERERERERERERERERERERERERERERERERERERE",
+        "recipientPrivateKey": "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiI",
+        "masterKey": "d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3c"
+      },
+      "transcript": "AAAAGXBhbGxhZGluLnNoYXJlZC11bmxvY2sudjEAAAAkWDI1NTE5LUhLREYtU0hBMjU2LVhDSEFDSEEyMFBPTFkxMzA1AAAAGXBhbGxhZGluLnNoYXJlZC11bmxvY2sudjEAAAAQd2ViLXRvLWV4dGVuc2lvbgAAACQxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEAAAAkMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyAAAAJDMzMzMzMzMzLTMzMzMtNDMzMy04MzMzLTMzMzMzMzMzMzMzMwAAABhodHRwczovL2FwaS5leGFtcGxlLnRlc3QAAAAYaHR0cHM6Ly9hcHAuZXhhbXBsZS50ZXN0AAAAIGFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhAAAAGnN5bnRoZXRpYy10YWItNy1kb2N1bWVudC05AAAAK016TXpNek16TXpNek16TXpNek16TXpNek16TXpNek16TXpNek16TXpNek0AAAArUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUQAAACQ0NDQ0NDQ0NC00NDQ0LTQ0NDQtODQ0NC00NDQ0NDQ0NDQ0NDQAAAABMgAAAAEzAAAAATQAAAArVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVQAAAA0xODAwMDAwMDAwMDAwAAAADTE4MDAwMDAwMzAwMDAAAAANMTc5OTk5OTk5MDAwMAAAAA0xODAwMDAwMTAwMDAwAAAADTE4MDAwMDAyMDAwMDAAAAANMTgwMDAwMDMwMDAwMAAAACtlMDZRbTc1X19rVEVaYUlnQTMxZ2p1TllsOU1lLVhMd2YzU0pMTEQzUHhNAAAAK0Q2cG9UdEtJWjdsX1Ntb3Q3bDM0enBkT2RyY0Jqajhpb2NUUEpuaFhEeUE",
+      "salt": "Fz_W-vpqF39CqwXM6BFl2WlIFtHOEZq6szUe7NmzQSc",
+      "derivedKey": "xuPH9ggKBiyRGfLCU5iV_kBLBZwB0eoD3csScCd7fBQ",
+      "envelope": {
+        "protocol": "palladin.shared-unlock.v1",
+        "suite": "X25519-HKDF-SHA256-XCHACHA20POLY1305",
+        "context": {
+          "protocol": "palladin.shared-unlock.v1",
+          "direction": "web-to-extension",
+          "operationId": "11111111-1111-4111-8111-111111111111",
+          "accountId": "22222222-2222-4222-8222-222222222222",
+          "organizationId": "33333333-3333-4333-8333-333333333333",
+          "apiOrigin": "https://api.example.test",
+          "webOrigin": "https://app.example.test",
+          "extensionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "documentBinding": "synthetic-tab-7-document-9",
+          "webGeneration": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+          "extensionGeneration": "REREREREREREREREREREREREREREREREREREREREREQ",
+          "linkId": "44444444-4444-4444-8444-444444444444",
+          "linkEpoch": 2,
+          "preferenceRevision": 3,
+          "authorizationVersion": 4,
+          "keyContextDigest": "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU",
+          "issuedAtMs": 1800000000000,
+          "expiresAtMs": 1800000030000,
+          "unlockedAtMs": 1799999990000,
+          "idleDeadlineMs": 1800000100000,
+          "absoluteDeadlineMs": 1800000200000,
+          "offlineDeadlineMs": 1800000300000
+        },
+        "sourcePublicKey": "e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM",
+        "recipientPublicKey": "D6poTtKIZ7l_Smot7l34zpdOdrcBjj8iocTPJnhXDyA",
+        "nonce": "ZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZm",
+        "ciphertext": "tLQDJGI_gTVKZCrI5E4pQzsKFsMajXmLiKaQH2ChGYC5XNemOn1c2ax-6mpqF083"
+      }
+    },
+    {
+      "name": "extension-to-web",
+      "nowMs": 1800000000001,
+      "synthetic": {
+        "sourcePrivateKey": "ERERERERERERERERERERERERERERERERERERERERERE",
+        "recipientPrivateKey": "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiI",
+        "masterKey": "d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3c"
+      },
+      "transcript": "AAAAGXBhbGxhZGluLnNoYXJlZC11bmxvY2sudjEAAAAkWDI1NTE5LUhLREYtU0hBMjU2LVhDSEFDSEEyMFBPTFkxMzA1AAAAGXBhbGxhZGluLnNoYXJlZC11bmxvY2sudjEAAAAQZXh0ZW5zaW9uLXRvLXdlYgAAACQxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEAAAAkMjIyMjIyMjItMjIyMi00MjIyLTgyMjItMjIyMjIyMjIyMjIyAAAAJDMzMzMzMzMzLTMzMzMtNDMzMy04MzMzLTMzMzMzMzMzMzMzMwAAABhodHRwczovL2FwaS5leGFtcGxlLnRlc3QAAAAYaHR0cHM6Ly9hcHAuZXhhbXBsZS50ZXN0AAAAIGFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhAAAAGnN5bnRoZXRpYy10YWItNy1kb2N1bWVudC05AAAAK016TXpNek16TXpNek16TXpNek16TXpNek16TXpNek16TXpNek16TXpNek0AAAArUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUQAAACQ0NDQ0NDQ0NC00NDQ0LTQ0NDQtODQ0NC00NDQ0NDQ0NDQ0NDQAAAABMgAAAAEzAAAAATQAAAArVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVQAAAA0xODAwMDAwMDAwMDAwAAAADTE4MDAwMDAwMzAwMDAAAAANMTc5OTk5OTk5MDAwMAAAAA0xODAwMDAwMTAwMDAwAAAADTE4MDAwMDAyMDAwMDAAAAANMTgwMDAwMDMwMDAwMAAAACtlMDZRbTc1X19rVEVaYUlnQTMxZ2p1TllsOU1lLVhMd2YzU0pMTEQzUHhNAAAAK0Q2cG9UdEtJWjdsX1Ntb3Q3bDM0enBkT2RyY0Jqajhpb2NUUEpuaFhEeUE",
+      "salt": "wRAoMVS1meFMqcGpOWbcy9r4bQAP6VYKlGRfCCrfEb0",
+      "derivedKey": "9FfyDALwGrZQqN3mlVD4Jo2qPRDdk8qC2RIiWS3c8Io",
+      "envelope": {
+        "protocol": "palladin.shared-unlock.v1",
+        "suite": "X25519-HKDF-SHA256-XCHACHA20POLY1305",
+        "context": {
+          "protocol": "palladin.shared-unlock.v1",
+          "direction": "extension-to-web",
+          "operationId": "11111111-1111-4111-8111-111111111111",
+          "accountId": "22222222-2222-4222-8222-222222222222",
+          "organizationId": "33333333-3333-4333-8333-333333333333",
+          "apiOrigin": "https://api.example.test",
+          "webOrigin": "https://app.example.test",
+          "extensionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "documentBinding": "synthetic-tab-7-document-9",
+          "webGeneration": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+          "extensionGeneration": "REREREREREREREREREREREREREREREREREREREREREQ",
+          "linkId": "44444444-4444-4444-8444-444444444444",
+          "linkEpoch": 2,
+          "preferenceRevision": 3,
+          "authorizationVersion": 4,
+          "keyContextDigest": "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU",
+          "issuedAtMs": 1800000000000,
+          "expiresAtMs": 1800000030000,
+          "unlockedAtMs": 1799999990000,
+          "idleDeadlineMs": 1800000100000,
+          "absoluteDeadlineMs": 1800000200000,
+          "offlineDeadlineMs": 1800000300000
+        },
+        "sourcePublicKey": "e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM",
+        "recipientPublicKey": "D6poTtKIZ7l_Smot7l34zpdOdrcBjj8iocTPJnhXDyA",
+        "nonce": "ZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZm",
+        "ciphertext": "OhwI60LcuE273N0wF559gJ5_6-YHGg4bdX6f12Rl6q0WJ_LCP0VSzDzGPSfj0PI7"
+      }
+    }
+  ],
+  "negative": [
+    {
+      "name": "substitute-protocol",
+      "mutation": "context",
+      "field": "protocol"
+    },
+    {
+      "name": "substitute-direction",
+      "mutation": "context",
+      "field": "direction"
+    },
+    {
+      "name": "substitute-operationId",
+      "mutation": "context",
+      "field": "operationId"
+    },
+    {
+      "name": "substitute-accountId",
+      "mutation": "context",
+      "field": "accountId"
+    },
+    {
+      "name": "substitute-organizationId",
+      "mutation": "context",
+      "field": "organizationId"
+    },
+    {
+      "name": "substitute-apiOrigin",
+      "mutation": "context",
+      "field": "apiOrigin"
+    },
+    {
+      "name": "substitute-webOrigin",
+      "mutation": "context",
+      "field": "webOrigin"
+    },
+    {
+      "name": "substitute-extensionId",
+      "mutation": "context",
+      "field": "extensionId"
+    },
+    {
+      "name": "substitute-documentBinding",
+      "mutation": "context",
+      "field": "documentBinding"
+    },
+    {
+      "name": "substitute-webGeneration",
+      "mutation": "context",
+      "field": "webGeneration"
+    },
+    {
+      "name": "substitute-extensionGeneration",
+      "mutation": "context",
+      "field": "extensionGeneration"
+    },
+    {
+      "name": "substitute-linkId",
+      "mutation": "context",
+      "field": "linkId"
+    },
+    {
+      "name": "substitute-linkEpoch",
+      "mutation": "context",
+      "field": "linkEpoch"
+    },
+    {
+      "name": "substitute-preferenceRevision",
+      "mutation": "context",
+      "field": "preferenceRevision"
+    },
+    {
+      "name": "substitute-authorizationVersion",
+      "mutation": "context",
+      "field": "authorizationVersion"
+    },
+    {
+      "name": "substitute-keyContextDigest",
+      "mutation": "context",
+      "field": "keyContextDigest"
+    },
+    {
+      "name": "substitute-issuedAtMs",
+      "mutation": "context",
+      "field": "issuedAtMs"
+    },
+    {
+      "name": "substitute-expiresAtMs",
+      "mutation": "context",
+      "field": "expiresAtMs"
+    },
+    {
+      "name": "substitute-unlockedAtMs",
+      "mutation": "context",
+      "field": "unlockedAtMs"
+    },
+    {
+      "name": "substitute-idleDeadlineMs",
+      "mutation": "context",
+      "field": "idleDeadlineMs"
+    },
+    {
+      "name": "substitute-absoluteDeadlineMs",
+      "mutation": "context",
+      "field": "absoluteDeadlineMs"
+    },
+    {
+      "name": "substitute-offlineDeadlineMs",
+      "mutation": "context",
+      "field": "offlineDeadlineMs"
+    },
+    {
+      "name": "corrupt-protocol",
+      "mutation": "envelope",
+      "field": "protocol"
+    },
+    {
+      "name": "corrupt-suite",
+      "mutation": "envelope",
+      "field": "suite"
+    },
+    {
+      "name": "corrupt-sourcePublicKey",
+      "mutation": "envelope",
+      "field": "sourcePublicKey"
+    },
+    {
+      "name": "corrupt-recipientPublicKey",
+      "mutation": "envelope",
+      "field": "recipientPublicKey"
+    },
+    {
+      "name": "corrupt-nonce",
+      "mutation": "envelope",
+      "field": "nonce"
+    },
+    {
+      "name": "corrupt-ciphertext",
+      "mutation": "envelope",
+      "field": "ciphertext"
+    },
+    {
+      "name": "unknown-context-field"
+    },
+    {
+      "name": "unknown-envelope-field"
+    },
+    {
+      "name": "replay"
+    },
+    {
+      "name": "reflection"
+    },
+    {
+      "name": "expiry"
+    },
+    {
+      "name": "future"
+    },
+    {
+      "name": "wrong-key"
+    },
+    {
+      "name": "low-order-key"
+    },
+    {
+      "name": "cancel-during-derive"
+    },
+    {
+      "name": "authority-revoked"
+    }
+  ]
+}

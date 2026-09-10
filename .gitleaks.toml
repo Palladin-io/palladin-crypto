@@ -26,3 +26,14 @@ regexes = [
   '''authCredential: 'aRKTmLFcaSbzQy83MTRpf5PfLSjeBLGQP4HVpEudV7I',''',
   '''masterKey: 'HtGyf-Z7BvE39e66VcP2bztQ0BBKmfzvBGCp_nLiXbk',''',
 ]
+
+[[allowlists]]
+description = "Exact generated synthetic HKDF outputs in the shared-unlock v1 conformance fixture"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^src/fixtures/shared-unlock-v1/fixtures\.json$''']
+regexes = [
+  '''"derivedKey": "xuPH9ggKBiyRGfLCU5iV_kBLBZwB0eoD3csScCd7fBQ"''',
+  '''"derivedKey": "9FfyDALwGrZQqN3mlVD4Jo2qPRDdk8qC2RIiWS3c8Io"''',
+]
