@@ -148,3 +148,10 @@ from the package. The contract remains candidate pending the complete Identity
 bootstrap/lifecycle contract, browser integration and release verification;
 release tag and fixture digest must be pinned before consumer cutover. Existing
 Vault, Identity KDF and Agent Inject operations are unchanged.
+
+`createSharedUnlockIdentityProofSigner` generates the separate, RAM-only Ed25519
+receiver proof key before source authorization. It signs consume once and then
+commit once for the same Identity operation, binding the full MK transcript hash,
+challenge and lifetime. `assertCurrent` remains mandatory. This local ordering
+complements the required server-side atomic consume; it does not replace it.
+Independent Node-generated proof vectors are also consumed by the .NET verifier.

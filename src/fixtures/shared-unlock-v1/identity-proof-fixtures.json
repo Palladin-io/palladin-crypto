@@ -1,0 +1,78 @@
+{
+  "warning": "Generated deterministic synthetic Ed25519 test material. Never use in production.",
+  "syntheticSeed": "iIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIg",
+  "positive": [
+    {
+      "name": "web-to-extension/consume",
+      "purpose": "consume",
+      "context": {
+        "operationId": "11111111-1111-4111-8111-111111111111",
+        "challenge": "mZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZk",
+        "transcriptHash": "Fz_W-vpqF39CqwXM6BFl2WlIFtHOEZq6szUe7NmzQSc",
+        "issuedAtMs": 1800000000000,
+        "expiresAtMs": 1800000030000
+      },
+      "recipientProofPublicKey": "skkdlQKuKGMKK6yy4MdFEP_N0yjDNP8-E5PnWy0x59w",
+      "message": "AAAAKHBhbGxhZGluLnNoYXJlZC11bmxvY2suaWRlbnRpdHktcHJvb2YudjEAAAAHY29uc3VtZQAAACQxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEAAAArbVptWm1abVptWm1abVptWm1abVptWm1abVptWm1abVptWm1abVptWm1aawAAACtGel9XLXZwcUYzOUNxd1hNNkJGbDJXbElGdEhPRVpxNnN6VWU3Tm16UVNjAAAAK3Nra2RsUUt1S0dNS0s2eXk0TWRGRVBfTjB5akROUDgtRTVQbld5MHg1OXcAAAANMTgwMDAwMDAwMDAwMAAAAA0xODAwMDAwMDMwMDAw",
+      "signature": "NuZSsfUbdnsbFSj3dU3O2qCc3TwABaGTUoREJENxbdi7c47V4ztARq5vmLCICwR_b2XzNKJMzGTG432rLA_aCQ"
+    },
+    {
+      "name": "web-to-extension/commit",
+      "purpose": "commit",
+      "context": {
+        "operationId": "11111111-1111-4111-8111-111111111111",
+        "challenge": "mZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZk",
+        "transcriptHash": "Fz_W-vpqF39CqwXM6BFl2WlIFtHOEZq6szUe7NmzQSc",
+        "issuedAtMs": 1800000000000,
+        "expiresAtMs": 1800000030000
+      },
+      "recipientProofPublicKey": "skkdlQKuKGMKK6yy4MdFEP_N0yjDNP8-E5PnWy0x59w",
+      "message": "AAAAKHBhbGxhZGluLnNoYXJlZC11bmxvY2suaWRlbnRpdHktcHJvb2YudjEAAAAGY29tbWl0AAAAJDExMTExMTExLTExMTEtNDExMS04MTExLTExMTExMTExMTExMQAAACttWm1abVptWm1abVptWm1abVptWm1abVptWm1abVptWm1abVptWm1abVprAAAAK0Z6X1ctdnBxRjM5Q3F3WE02QkZsMldsSUZ0SE9FWnE2c3pVZTdObXpRU2MAAAArc2trZGxRS3VLR01LSzZ5eTRNZEZFUF9OMHlqRE5QOC1FNVBuV3kweDU5dwAAAA0xODAwMDAwMDAwMDAwAAAADTE4MDAwMDAwMzAwMDA",
+      "signature": "yV2pxGxvSfFQZ-idZIwBBdMcYNRGTfLIAXN1M_dlYHRc_SPtlQ64nxYpR645esTb3K53yyHZ787bpsrmh-zLCQ"
+    },
+    {
+      "name": "extension-to-web/consume",
+      "purpose": "consume",
+      "context": {
+        "operationId": "11111111-1111-4111-8111-111111111111",
+        "challenge": "mZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZk",
+        "transcriptHash": "wRAoMVS1meFMqcGpOWbcy9r4bQAP6VYKlGRfCCrfEb0",
+        "issuedAtMs": 1800000000000,
+        "expiresAtMs": 1800000030000
+      },
+      "recipientProofPublicKey": "skkdlQKuKGMKK6yy4MdFEP_N0yjDNP8-E5PnWy0x59w",
+      "message": "AAAAKHBhbGxhZGluLnNoYXJlZC11bmxvY2suaWRlbnRpdHktcHJvb2YudjEAAAAHY29uc3VtZQAAACQxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEAAAArbVptWm1abVptWm1abVptWm1abVptWm1abVptWm1abVptWm1abVptWm1aawAAACt3UkFvTVZTMW1lRk1xY0dwT1diY3k5cjRiUUFQNlZZS2xHUmZDQ3JmRWIwAAAAK3Nra2RsUUt1S0dNS0s2eXk0TWRGRVBfTjB5akROUDgtRTVQbld5MHg1OXcAAAANMTgwMDAwMDAwMDAwMAAAAA0xODAwMDAwMDMwMDAw",
+      "signature": "__i6TYGeMCMFNquswI6GNUiF8EBUsXf49mwgHm1c1IYrED6CbyWw7606tmlhgPU8TKOUX5y6YWTqf6nhdbcfBQ"
+    },
+    {
+      "name": "extension-to-web/commit",
+      "purpose": "commit",
+      "context": {
+        "operationId": "11111111-1111-4111-8111-111111111111",
+        "challenge": "mZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZk",
+        "transcriptHash": "wRAoMVS1meFMqcGpOWbcy9r4bQAP6VYKlGRfCCrfEb0",
+        "issuedAtMs": 1800000000000,
+        "expiresAtMs": 1800000030000
+      },
+      "recipientProofPublicKey": "skkdlQKuKGMKK6yy4MdFEP_N0yjDNP8-E5PnWy0x59w",
+      "message": "AAAAKHBhbGxhZGluLnNoYXJlZC11bmxvY2suaWRlbnRpdHktcHJvb2YudjEAAAAGY29tbWl0AAAAJDExMTExMTExLTExMTEtNDExMS04MTExLTExMTExMTExMTExMQAAACttWm1abVptWm1abVptWm1abVptWm1abVptWm1abVptWm1abVptWm1abVprAAAAK3dSQW9NVlMxbWVGTXFjR3BPV2JjeTlyNGJRQVA2VllLbEdSZkNDcmZFYjAAAAArc2trZGxRS3VLR01LSzZ5eTRNZEZFUF9OMHlqRE5QOC1FNVBuV3kweDU5dwAAAA0xODAwMDAwMDAwMDAwAAAADTE4MDAwMDAwMzAwMDA",
+      "signature": "joQRIAKoeyWM84vuQG9IVZKp3ebqdPeq-ppvzA7XOpZlmhj0rsGDWazKUpZ3nO_-rUV4nKaxF83oJryjfleuDg"
+    }
+  ],
+  "negative": [
+    "wrong-purpose",
+    "wrong-operation",
+    "wrong-challenge",
+    "wrong-transcript",
+    "wrong-public-key",
+    "wrong-issuance",
+    "wrong-expiry",
+    "expired",
+    "future",
+    "malformed-signature",
+    "corrupt-signature",
+    "replay",
+    "commit-before-consume",
+    "context-change-before-commit"
+  ]
+}
