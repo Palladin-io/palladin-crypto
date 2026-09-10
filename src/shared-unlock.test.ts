@@ -102,6 +102,20 @@ for (const vector of fixture.positive) {
       recipient.dispose()
       await expect(opening).rejects.toThrow(rejection)
     })
+    for (const role of ['source', 'recipient'] as const) {
+      it(`rejects ${role} disposal from the final authority callback`, async () => {
+        let checks = 0
+        let cancel = () => {}
+        const participant = await create(role, { assertCurrent: () => {
+          if (++checks === (role === 'source' ? 3 : 4)) cancel()
+        } })
+        cancel = () => participant.dispose()
+        const pending = role === 'source'
+          ? participant.seal(bytes(vector.synthetic.masterKey), vector.envelope.recipientPublicKey)
+          : participant.open(vector.envelope, vector.envelope.sourcePublicKey)
+        await expect(pending).rejects.toThrow(rejection)
+      })
+    }
     it('rejects authority-revoked during async key derivation', async () => {
       let revoked = false
       const recipient = await create('recipient', { assertCurrent: () => { if (revoked) throw new Error('synthetic revocation') } })

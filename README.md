@@ -142,11 +142,12 @@ document/generation, authorization or expired inherited limits. Persistent
 markers, copied tokens and possession of an MK cannot authorize a new session.
 
 The candidate contract and generated synthetic vectors are owned by
-[palladin-protocol](https://github.com/Palladin-io/palladin-protocol/tree/feat/cvt-583-shared-unlock/contracts/shared-unlock).
+[palladin-protocol](https://github.com/Palladin-io/palladin-protocol/tree/2eae10ac35d57b0bcdaea5b3b5e207ad16120221/contracts/shared-unlock).
 The fixture copy in `src/fixtures/shared-unlock-v1/` is test-only and excluded
 from the package. The contract remains candidate pending the complete Identity
 bootstrap/lifecycle contract, browser integration and release verification;
-release tag and fixture digest must be pinned before consumer cutover. Existing
+The contract source is pinned to the immutable commit above; package release
+provenance and fixture digests must be verified before consumer cutover. Existing
 Vault, Identity KDF and Agent Inject operations are unchanged.
 
 `createSharedUnlockIdentityProofSigner` generates the separate, RAM-only Ed25519
@@ -172,3 +173,9 @@ operation authority before using recovered keys. Never treat a descriptor inside
 a peer payload or encrypted envelope as its own expected authority. Node golden
 vectors cover exact bytes and substitution of every field, with matching .NET
 consumer tests. No plaintext private key or MK is included in this descriptor.
+
+Pinned synthetic fixture SHA-256 digests (excluded from the npm package):
+
+- `fixtures.json`: `a601282fec02f545ccf03dc5d3ddbe078ed7589965a7b0ae40af95854780c332`
+- `identity-proof-fixtures.json`: `0ffa563b9f72db2ca68b9197c4fb7dbfc907294dec6b61861ab57e41c83e426f`
+- `key-context-fixtures.json`: `9ce4c1b5626b899f21518c16657afb690e12fc6ddd1d213cacaf35cfad491020`

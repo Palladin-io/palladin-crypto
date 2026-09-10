@@ -180,6 +180,7 @@ export async function createSharedUnlockOffer(options: {
         const time = now()
         if (disposed || time < createdAt || time - createdAt >= 30_000 || !Number.isSafeInteger(time) || time < expected.issuedAtMs || time >= expected.expiresAtMs) invalid()
         assertCurrent(expected)
+        if (disposed) invalid()
       }
       function take(required: typeof role) {
         if (used || role !== required) invalid()
