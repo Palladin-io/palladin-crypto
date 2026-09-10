@@ -161,3 +161,14 @@ let Identity authorize the resulting transcript, then call `bind(expected)` once
 using that independent authority. `hashSharedUnlockTranscript` supplies the exact
 SHA-256 binding for the receiver proof. Offers expire after 30 seconds even if a
 later operation has a newer expiry; rebinding or disposal cancels their key. An offer itself grants no authority and contains no MK.
+
+`hashSharedUnlockKeyContext` and `encodeSharedUnlockKeyContext` bind Identity's
+current account descriptor (KDF metadata, account/key revisions, public key and
+private-key ciphertext) to the authorized MK operation. The typed encoder follows
+`palladin.shared-unlock.key-context.v1`; it does not duplicate server-owned account
+validation or authenticate a peer. Get the descriptor directly from Identity,
+check the independently selected account and compare the digest with the current
+operation authority before using recovered keys. Never treat a descriptor inside
+a peer payload or encrypted envelope as its own expected authority. Node golden
+vectors cover exact bytes and substitution of every field, with matching .NET
+consumer tests. No plaintext private key or MK is included in this descriptor.

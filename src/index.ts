@@ -135,3 +135,4 @@ export type {
 
 // --- Browser shared unlock receiver proof (candidate Identity contract) ---
 export * from './shared-unlock-identity-proof'
+export * from './shared-unlock-key-context'
