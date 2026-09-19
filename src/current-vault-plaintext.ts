@@ -156,7 +156,7 @@ const grantPayloadV2Schema = grantPayloadSchema.extend({ schema: z.literal('pall
 // Runtime outputs derive a fresh code; they must never serialize this object.
 const runtimeTotpSource = z.object({
   source: z.literal('totp'),
-  secret: z.string().min(2).max(1024).regex(/^[A-Z2-7]+$/).refine((value) => {
+  secret: z.string().min(26).max(1024).regex(/^[A-Z2-7]+$/).refine((value) => {
     const remainder = value.length % 8
     if (![0, 2, 4, 5, 7].includes(remainder)) return false
     const unusedBits = (value.length * 5) % 8

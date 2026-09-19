@@ -9,7 +9,8 @@ exact registry version before rollout.
 V2 projects only explicitly approved fields allowed by Member policy. Primary
 and custom TOTP values contain a strict source object for native-runtime-only
 RFC 6238 derivation. No code is generated at grant construction time. Issuer and
-account metadata are omitted. Field-set commitment, scopes, key/revision binding,
+account metadata are omitted. New v2 sources require at least 16 decoded bytes
+(128 bits); short imported seeds fail closed and must be replaced at their issuer. Field-set commitment, scopes, key/revision binding,
 methods and delivery policy use the existing authenticated Vault envelope.
 The encrypted source never reaches the backend as plaintext. The source is
 sensitive: callers must not log or serialize it outside that encrypted envelope.
@@ -31,7 +32,7 @@ AWS acceptance is claimed by these library tests.
 ## Conformance fixtures
 
 `src/fixtures/grant-payload-v2/vectors.json` is copied byte-for-byte from
-`Palladin-io/palladin-protocol/contracts/grant-payload/v2/vectors.json`, at commit `331d94e6c5ba4b5adaba07fda286a3a20633b78f`, generated
+`Palladin-io/palladin-protocol/contracts/grant-payload/v2/vectors.json`, at commit `889d47746ed34e7b44b6a604c25cb6d0e159a52f`, generated
 by its committed `scripts/generate-v2.mjs`. Seeds are public RFC 6238 Appendix B
 material. Regenerate upstream and copy the result; never edit fixture outputs.
 Tests verify canonical parsing/encoding and source rejection. Existing envelope
