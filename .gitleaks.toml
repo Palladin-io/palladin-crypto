@@ -49,6 +49,7 @@ paths = [
   '''^src/fixtures/grant\-payload\-v2/vectors\.json$'''
 ]
 regexes = [
+  '''^GEZDGNBVGY3TQOJQGEZDGNBVGY======$''',
   '''^AAA$''',
   '''^AAAAAAAAAAAAAAAAAAAAAAAAAB$''',
   '''^GEZDGNBVGY3TQOJQGEZDGNBV$''',

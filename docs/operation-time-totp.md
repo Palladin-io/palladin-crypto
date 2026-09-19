@@ -32,7 +32,7 @@ AWS acceptance is claimed by these library tests.
 ## Conformance fixtures
 
 `src/fixtures/grant-payload-v2/vectors.json` is copied byte-for-byte from
-`Palladin-io/palladin-protocol/contracts/grant-payload/v2/vectors.json`, at commit `889d47746ed34e7b44b6a604c25cb6d0e159a52f`, generated
+`Palladin-io/palladin-protocol/contracts/grant-payload/v2/vectors.json`, at commit `eae7dca8d9fcf4bbb69895db4a44bc648de26a6b`, generated
 by its committed `scripts/generate-v2.mjs`. Seeds are public RFC 6238 Appendix B
 material. Regenerate upstream and copy the result; never edit fixture outputs.
 Tests verify canonical parsing/encoding and source rejection. Existing envelope
