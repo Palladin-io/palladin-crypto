@@ -2,5 +2,6 @@
 export {
   grantPayloadPolicyFieldId as canonicalGrantPolicyFieldId,
   listGrantableFieldIds as listCanonicalGrantableFieldIds,
+  projectGrantPayloadV2 as projectCanonicalGrantPayloadV2,
   projectGrantPayload as projectCanonicalGrantPayload,
 } from './current-vault-plaintext'

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fromBase64Url, toBase64 } from './encoding'
-import { buildCanonicalGrantEnvelope } from './grant-protocol'
+import { buildCanonicalGrantEnvelope, buildCanonicalGrantEnvelopeV2 } from './grant-protocol'
 import { encodeDeliveryBoundGrantAad } from './canonical-aad'
 import { requireCryptoSuite } from './crypto-suite'
 import { deriveVaultSubkey } from './hkdf'
@@ -26,11 +26,19 @@ const secret: MemberSecretV1 = {
 }
 
 describe('canonical Grant protocol', () => {
-  it('binds the selected fields and caller-provided revision/key version', async () => {
+  it.each([1, 2])('binds the selected fields and caller-provided revision/key version (payload v%i)', async (version) => {
     const sodium = await loadSodium()
     const agent = sodium.crypto_box_keypair()
     try {
-      const envelope = await buildCanonicalGrantEnvelope({
+      const build = version === 2 ? buildCanonicalGrantEnvelopeV2 : buildCanonicalGrantEnvelope
+      const totpSource = { source: 'totp', secret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', algorithm: 'SHA1', digits: 8, period: 30 } as const
+      const inputSecret: MemberSecretV1 = version === 1 ? secret : {
+        ...secret, agentFieldAccess: { ...secret.agentFieldAccess, 'credential.totp': 'onGrantDerived' },
+        content: { ...secret.content, totp: { secret: totpSource.secret, algorithm: totpSource.algorithm, digits: totpSource.digits, period: totpSource.period, issuer: null, account: null } },
+      }
+      // Source is supplied by the Member; the grant endpoint receives only ciphertext.
+      const selected = version === 1 ? ['credential.password'] : ['credential.password', 'credential.totp']
+      const envelope = await build({
         organizationId: '00112233-4455-6677-8899-aabbccddeeff',
         vaultId: '11112222-3333-4444-8555-666677778888',
         entryId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
@@ -39,13 +47,13 @@ describe('canonical Grant protocol', () => {
         entryRevision: '7', memberKeyGeneration: 3,
         agentPublicKey: toBase64(agent.publicKey), recipientKeyVersion: 4,
         grantEnvelopeRevision: '8', grantKeyVersion: 5,
-        approvedFieldIds: ['credential.password'], approvedMethods: 1, secret,
+        approvedFieldIds: selected, approvedMethods: 1, secret: inputSecret,
       })
       expect(envelope.descriptor.resourceRevision).toBe('8')
       expect(envelope.descriptor.keyVersion).toBe(5)
       expect(envelope.wrappedGrantDek.descriptor.resourceRevision).toBe('8')
       expect(envelope.wrappedGrantDek.descriptor.wrappedKeyVersion).toBe(5)
-      expect(envelope.fieldIds).toEqual(['credential.password'])
+      expect(envelope.fieldIds).toEqual(selected)
       const wrapper = envelope.wrappedGrantDek.descriptor
       const grantDek = await openKeyFromX25519Recipient(
         fromBase64Url(envelope.wrappedGrantDek.encodedSealedKeyPackage),
@@ -86,9 +94,19 @@ describe('canonical Grant protocol', () => {
         const suite = requireCryptoSuite(envelope.descriptor.cryptoSuiteId)
         const plaintext = await suite.open({ key: payloadKey, aad,
           payload: suite.validateEncodedPayload(fromBase64Url(envelope.encodedSuitePayload)) })
-        expect(new TextDecoder().decode(plaintext)).toBe(
-          '{"entryType":"credential","fields":[{"id":"credential.password","kind":"concealed","mode":"value","value":"secret"}],"schema":"palladin.grant-payload.v1"}',
-        )
+        const decoded = JSON.parse(new TextDecoder().decode(plaintext))
+        expect(decoded).toEqual({
+          schema: `palladin.grant-payload.v${version}`, entryType: 'credential', fields: [
+            { id: 'credential.password', kind: 'concealed', mode: 'value', value: 'secret' },
+            ...(version === 2 ? [{ id: 'credential.totp', kind: 'totp', mode: 'derived', value: totpSource }] : []),
+          ],
+        })
+        // The same ciphertext must not open under another scope or revision.
+        for (const offset of [10, Math.floor(aad.length / 2), aad.length - 1]) {
+          const substituted = new Uint8Array(aad); substituted[offset] ^= 1
+          await expect(suite.open({ key: payloadKey, aad: substituted as typeof aad,
+            payload: suite.validateEncodedPayload(fromBase64Url(envelope.encodedSuitePayload)) })).rejects.toThrow()
+        }
         wipe(plaintext)
       } finally {
         wipe(payloadKey)

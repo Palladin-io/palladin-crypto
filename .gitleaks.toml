@@ -37,3 +37,27 @@ regexes = [
   '''"derivedKey": "xuPH9ggKBiyRGfLCU5iV_kBLBZwB0eoD3csScCd7fBQ"''',
   '''"derivedKey": "9FfyDALwGrZQqN3mlVD4Jo2qPRDdk8qC2RIiWS3c8Io"''',
 ]
+
+[[allowlists]]
+description = "Exact public RFC 6238 Appendix B seeds in generated v2 test fixtures"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "secret"
+paths = [
+  '''^src/grant\-payload\-v2\.test\.ts$''',
+  '''^src/grant\-protocol\.test\.ts$''',
+  '''^src/fixtures/grant\-payload\-v2/vectors\.json$'''
+]
+regexes = [
+  '''^GEZDGNBVGY3TQOJQGEZDGNBVGY======$''',
+  '''^AAA$''',
+  '''^AAAAAAAAAAAAAAAAAAAAAAAAAB$''',
+  '''^GEZDGNBVGY3TQOJQGEZDGNBV$''',
+  '''^GEZDGNBVGY3TQOJQGEZDGNBVGY$''',
+  '''^GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ$''',
+  '''^GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA$''',
+  '''^GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA$''',
+  '''^MY$''',
+  '''^MY======$''',
+  '''^gezdgnbvgy3tqojqgezdgnbvgy3tqojq$'''
+]
