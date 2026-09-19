@@ -7,6 +7,8 @@ import { deriveVaultSubkey } from './hkdf'
 import { listCanonicalGrantableFieldIds, projectCanonicalGrantPayload } from './canonical-grant-payload'
 import {
   encodeGrantPayload,
+  encodeGrantPayloadV2,
+  projectGrantPayloadV2,
   type MemberSecretV1,
 } from './current-vault-plaintext'
 import { toEnvelopeDescriptor, type EnvelopeDescriptorContract } from './vault-envelope'
@@ -56,7 +58,16 @@ function instant(value?: string): { seconds: bigint; nanoseconds: number } | und
   return { seconds: BigInt(Math.floor(millis / 1000)), nanoseconds: Number((match[1] ?? '').padEnd(9, '0')) }
 }
 
-export async function buildCanonicalGrantEnvelope(input: BuildGrantEnvelopeInput) {
+export function buildCanonicalGrantEnvelope(input: BuildGrantEnvelopeInput) {
+  return buildGrantEnvelope(input, 1)
+}
+
+/** Explicit migration API: consumers must understand GrantPayload v2 before cutover. */
+export function buildCanonicalGrantEnvelopeV2(input: BuildGrantEnvelopeInput) {
+  return buildGrantEnvelope(input, 2)
+}
+
+async function buildGrantEnvelope(input: BuildGrantEnvelopeInput, version: 1 | 2) {
   if (!Number.isInteger(input.approvedMethods) || input.approvedMethods < 1 || input.approvedMethods > 7) {
     throw new RangeError('Grant methods must use the registered Get/Exec/Inject mask')
   }
@@ -72,7 +83,9 @@ export async function buildCanonicalGrantEnvelope(input: BuildGrantEnvelopeInput
       throw new Error(`Field ${id} is not grantable by its agent-access policy`)
     }
   }
-  const payload = await projectCanonicalGrantPayload(input.secret, approvedPolicyFieldIds)
+  const payload = version === 2
+    ? await projectGrantPayloadV2(input.secret, approvedPolicyFieldIds)
+    : await projectCanonicalGrantPayload(input.secret, approvedPolicyFieldIds)
   const fieldIds = payload.fields.map(({ id }) => id)
   const publicKey = fromBase64(input.agentPublicKey)
   const fingerprint = await computeVaultKeyFingerprint(publicKey, VAULT_KEY_KIND.agentX25519)
@@ -98,7 +111,8 @@ export async function buildCanonicalGrantEnvelope(input: BuildGrantEnvelopeInput
     remainingUses: input.remainingUses,
   }
   const dek = await randomBytes(32)
-  const plaintext = encodeGrantPayload(payload)
+  const plaintext = payload.schema === 'palladin.grant-payload.v2'
+    ? encodeGrantPayloadV2(payload) : encodeGrantPayload(payload)
   let payloadKey: Uint8Array | undefined
   try {
     const { resourceRevision, ...kdfContext } = toEnvelopeDescriptor(descriptor)

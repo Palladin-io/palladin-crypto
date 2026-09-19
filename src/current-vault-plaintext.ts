@@ -150,6 +150,31 @@ const grantPayloadSchema = z.object({
   fields: z.array(grantField),
 }).strict()
 
+const grantPayloadV2Schema = grantPayloadSchema.extend({ schema: z.literal('palladin.grant-payload.v2') })
+
+// This source crosses the encrypted Member → native-runtime boundary only.
+// Runtime outputs derive a fresh code; they must never serialize this object.
+const runtimeTotpSource = z.object({
+  source: z.literal('totp'),
+  secret: z.string().min(2).max(1024).regex(/^[A-Z2-7]+$/).refine((value) => {
+    const remainder = value.length % 8
+    if (![0, 2, 4, 5, 7].includes(remainder)) return false
+    const unusedBits = (value.length * 5) % 8
+    const last = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'.indexOf(value.at(-1) ?? '')
+    return last >= 0 && (last & ((1 << unusedBits) - 1)) === 0
+  }, 'Invalid canonical Base32'),
+  algorithm: z.enum(['SHA1', 'SHA256', 'SHA512']),
+  digits: z.union([z.literal(6), z.literal(8)]),
+  period: z.number().int().min(15).max(120),
+}).strict()
+
+function validateRuntimeTotpSource(value: unknown): z.infer<typeof runtimeTotpSource> {
+  const result = runtimeTotpSource.safeParse(value)
+  // Do not let schema diagnostics include received values or unknown source keys.
+  if (!result.success) throw new Error('Invalid GrantPayload v2 TOTP source')
+  return result.data
+}
+
 const canonicalGrantUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const customGrantFieldId = /^custom:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const derivedTotpOutput = z.object({
@@ -178,6 +203,19 @@ const currentGrantFields: Record<string, { kind: string; mode: string; nullable:
 
 function validateCurrentGrantPayload(value: unknown): GrantPayloadV1 {
   const payload = grantPayloadSchema.parse(value)
+  validateGrantFields(payload, (source) => { derivedTotpOutput.parse(source) })
+  return payload
+}
+
+function validateGrantPayloadV2(value: unknown): GrantPayloadV2 {
+  const result = grantPayloadV2Schema.safeParse(value)
+  if (!result.success) throw new Error('Invalid GrantPayload v2')
+  try { validateGrantFields(result.data, validateRuntimeTotpSource) }
+  catch { throw new Error('Invalid GrantPayload v2') }
+  return result.data
+}
+
+function validateGrantFields(payload: GrantPayloadV1 | GrantPayloadV2, validateTotp: (value: unknown) => unknown): void {
   if (payload.entryType === 'creditCard' || payload.fields.length === 0) {
     throw new Error('Entry type is not registered in GrantPayload v1')
   }
@@ -205,14 +243,13 @@ function validateCurrentGrantPayload(value: unknown): GrantPayloadV1 {
     if (field.value === null) {
       if (!builtIn?.nullable) throw new Error('GrantPayload field is not nullable')
     } else if (field.kind === 'totp') {
-      derivedTotpOutput.parse(field.value)
+      validateTotp(field.value)
     } else if (field.kind === 'refs') {
       z.array(grantScriptReference).parse(field.value)
     } else if (typeof field.value !== 'string') {
       throw new Error('GrantPayload field value has an invalid shape')
     }
   }
-  return payload
 }
 
 export type MemberVaultMetadataV1 = z.infer<typeof memberVaultMetadataSchema>
@@ -220,6 +257,7 @@ export type MemberSecretV1 = z.infer<typeof memberSecretSchema>
 export type MemberIndexV1 = z.infer<typeof memberIndexSchema>
 export type AgentDiscoveryV1 = z.infer<typeof agentDiscoverySchema>
 export type GrantPayloadV1 = z.infer<typeof grantPayloadSchema>
+export type GrantPayloadV2 = z.infer<typeof grantPayloadV2Schema>
 export type PublicAssetVaultIconV1 = z.infer<typeof publicAssetIcon>
 
 export function publicAssetIconReference(asset: Omit<PublicAssetVaultIconV1, 'kind'>): string {
@@ -377,6 +415,7 @@ export const encodeMemberIndex = (value: MemberIndexV1): Uint8Array => encodeCan
 export function encodeMemberSecret(value: MemberSecretV1): Uint8Array { const parsed = memberSecretSchema.parse(value); assertPolicy(parsed); return encodeCanonicalVaultJson(parsed) }
 export const encodeAgentDiscovery = (value: AgentDiscoveryV1): Uint8Array => encodeCanonicalVaultJson(agentDiscoverySchema.parse(value))
 export const encodeGrantPayload = (value: GrantPayloadV1): Uint8Array => encodeCanonicalVaultJson(validateCurrentGrantPayload(value))
+export const encodeGrantPayloadV2 = (value: GrantPayloadV2): Uint8Array => encodeCanonicalVaultJson(validateGrantPayloadV2(value))
 // Script packages carry exact reference IDs (including Discovery fields), not public grant field IDs.
 export const encodeScriptReferencePayload = (value: GrantPayloadV1): Uint8Array => encodeCanonicalVaultJson(grantPayloadSchema.parse(value))
 
@@ -385,6 +424,16 @@ export const parseMemberIndex = (bytes: Uint8Array): MemberIndexV1 => parse(byte
 export function parseMemberSecret(bytes: Uint8Array): MemberSecretV1 { const value = parse(bytes, memberSecretSchema); assertPolicy(value); return value }
 export const parseAgentDiscovery = (bytes: Uint8Array): AgentDiscoveryV1 => parse(bytes, agentDiscoverySchema)
 export const parseGrantPayload = (bytes: Uint8Array): GrantPayloadV1 => validateCurrentGrantPayload(parse(bytes, grantPayloadSchema))
+
+export function parseGrantPayloadV2(bytes: Uint8Array): GrantPayloadV2 {
+  try {
+    const json = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+    rejectDuplicateKeys(json)
+    const value = JSON.parse(json)
+    if (json !== canonical(value)) throw new Error('Noncanonical GrantPayload v2')
+    return validateGrantPayloadV2(value)
+  } catch { throw new Error('Invalid GrantPayload v2') }
+}
 
 function fieldValue(secret: MemberSecretV1, id: string): unknown {
   if (id === 'memberLabel') return secret.memberLabel
@@ -463,6 +512,11 @@ export function projectGrantPayload(
   return projectPayload(secret, fieldIds, false, now)
 }
 
+/** Opt-in v2 producer. Requires a consumer supporting operation-time TOTP sources. */
+export function projectGrantPayloadV2(secret: MemberSecretV1, fieldIds: readonly string[]): Promise<GrantPayloadV2> {
+  return projectPayload(secret, fieldIds, false, 0, 2)
+}
+
 /** Exact Script refs may project discovery fields, but only as runtime-only values. */
 export function projectScriptReferencePayload(
   secret: MemberSecretV1,
@@ -472,12 +526,15 @@ export function projectScriptReferencePayload(
   return projectPayload(secret, fieldIds, true, now)
 }
 
+function projectPayload(secret: MemberSecretV1, fieldIds: readonly string[], allowDiscoveryRuntime: boolean, now: number): Promise<GrantPayloadV1>
+function projectPayload(secret: MemberSecretV1, fieldIds: readonly string[], allowDiscoveryRuntime: false, now: number, version: 2): Promise<GrantPayloadV2>
 async function projectPayload(
   secret: MemberSecretV1,
   fieldIds: readonly string[],
   allowDiscoveryRuntime: boolean,
   now: number,
-): Promise<GrantPayloadV1> {
+  version: 1 | 2 = 1,
+): Promise<GrantPayloadV1 | GrantPayloadV2> {
   assertPolicy(secret)
   if (!allowDiscoveryRuntime && secret.entryType === 'creditCard') {
     throw new Error('Entry type creditCard is not registered in GrantPayload v1')
@@ -523,7 +580,7 @@ async function projectPayload(
       ? `${secret.entryType}.notes`
       : id
     const projectedValue = kind === 'totp' && value !== null
-      ? await generateTotp({
+      ? version === 2 ? projectRuntimeTotpSource(value) : await generateTotp({
           ...(value as z.infer<typeof totpValue>),
           issuer: (value as z.infer<typeof totpValue>).issuer ?? undefined,
           account: (value as z.infer<typeof totpValue>).account ?? undefined,
@@ -537,8 +594,15 @@ async function projectPayload(
     }
   }))
   fields.sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
+  if (version === 2) return validateGrantPayloadV2({ schema: 'palladin.grant-payload.v2', entryType: secret.entryType, fields })
   const payload = { schema: 'palladin.grant-payload.v1', entryType: secret.entryType, fields }
   return allowDiscoveryRuntime ? grantPayloadSchema.parse(payload) : validateCurrentGrantPayload(payload)
+}
+
+function projectRuntimeTotpSource(value: unknown): z.infer<typeof runtimeTotpSource> {
+  if (!value || typeof value !== 'object') throw new Error('Invalid Member TOTP source')
+  const { secret, algorithm, digits, period } = value as Record<string, unknown>
+  return validateRuntimeTotpSource({ source: 'totp', secret, algorithm, digits, period })
 }
 
 function isRegisteredGrantPolicyField(type: VaultEntryTypeName, id: string): boolean {
