@@ -179,3 +179,13 @@ Pinned synthetic fixture SHA-256 digests (excluded from the npm package):
 - `fixtures.json`: `a601282fec02f545ccf03dc5d3ddbe078ed7589965a7b0ae40af95854780c332`
 - `identity-proof-fixtures.json`: `0ffa563b9f72db2ca68b9197c4fb7dbfc907294dec6b61861ab57e41c83e426f`
 - `key-context-fixtures.json`: `9ce4c1b5626b899f21518c16657afb690e12fc6ddd1d213cacaf35cfad491020`
+
+### Optional card CVV (0.9.0 candidate)
+
+Both MemberSecret adapters accept an optional `cvv` string of 3–4 ASCII digits,
+with `creditCard.cvv: never` required exactly when that field exists. Existing
+cards without CVV keep their encoding. CVV is never projected into MemberIndex,
+Discovery or Agent grant payloads. FULL Vault-key holders can still decrypt
+the complete MemberSecret. Coordinate the consumer rollout before writing CVV:
+older strict parsers reject the new field. Clients must consume the published
+registry release after review; local candidate tarballs are for verification only.
