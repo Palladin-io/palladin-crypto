@@ -75,6 +75,7 @@ const scriptContent = z.object({
 const creditCardContent = z.object({
   cardholderName: normalizedString.min(1).max(256),
   cardNumber: z.string().regex(/^\d{12,19}$/),
+  cvv: z.string().regex(/^\d{3,4}$/).optional(),
   expiryMonth: z.string().regex(/^(0[1-9]|1[0-2])$/),
   expiryYear: z.string().regex(/^\d{4}$/),
   billingAddress: normalizedString.nullable(),
@@ -197,6 +198,7 @@ const ALLOWED_ACCESS: Record<string, readonly AgentFieldAccess[]> = {
   'script.refs': ['never', 'onGrantRuntime'],
   'creditCard.cardholderName': ['never', 'onGrantRuntime'],
   'creditCard.cardNumber': ['never', 'onGrantRuntime'],
+  'creditCard.cvv': ['never'],
   'creditCard.expiryMonth': ['never', 'onGrantRuntime'],
   'creditCard.expiryYear': ['never', 'onGrantRuntime'],
   'creditCard.billingAddress': ['never', 'onGrantRuntime'],
@@ -204,7 +206,9 @@ const ALLOWED_ACCESS: Record<string, readonly AgentFieldAccess[]> = {
 
 function assertPolicy(secret: MemberSecretV1): void {
   const customFields = secret.content.customFields
-  const expected = [...BUILTIN_FIELDS[secret.entryType], ...customFields.map((field) => field.id)].sort()
+  const expected = [...BUILTIN_FIELDS[secret.entryType],
+    ...(secret.entryType === 'creditCard' && secret.content.cvv !== undefined ? ['creditCard.cvv'] : []),
+    ...customFields.map((field) => field.id)].sort()
   const actual = Object.keys(secret.agentFieldAccess).sort()
   if (expected.length !== actual.length || expected.some((field, index) => field !== actual[index])) {
     throw new Error('AgentFieldAccess keys do not exactly match the Entry schema')
