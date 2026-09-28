@@ -19,28 +19,65 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
         with:
           persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        id: set_up_node_js
         with:
           node-version: 20
           cache: npm
 
       - name: Install dependencies
+        id: install_dependencies
         run: npm ci
 
       - name: Typecheck
+        id: typecheck
         run: npm run typecheck
 
       - name: Build
+        id: build
         run: npm run build
 
       - name: Test
+        id: test
         run: npm test
 
       - name: Verify OSS metadata
+        id: verify_oss_metadata
         run: npm run oss:check
 
       - name: Verify package contents
+        id: verify_package_contents
         run: npm run package:check
+
+      - name: Publish CI check summary
+        if: always()
+        shell: bash
+        env:
+          CHECKOUT: ${{ steps.checkout.outcome }}
+          SET_UP_NODE_JS: ${{ steps.set_up_node_js.outcome }}
+          INSTALL_DEPENDENCIES: ${{ steps.install_dependencies.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          TEST: ${{ steps.test.outcome }}
+          VERIFY_OSS_METADATA: ${{ steps.verify_oss_metadata.outcome }}
+          VERIFY_PACKAGE_CONTENTS: ${{ steps.verify_package_contents.outcome }}
+        run: |
+          {
+            printf '## CI checks\n\nPlatform: Linux (ubuntu-latest)\n\n'
+            printf '| Check | Result |\n| --- | --- |\n'
+            printf '| %s | %s |\n' 'Checkout' "${CHECKOUT:-not run}"
+            printf '| %s | %s |\n' 'Set up Node.js' "${SET_UP_NODE_JS:-not run}"
+            printf '| %s | %s |\n' 'Install dependencies' "${INSTALL_DEPENDENCIES:-not run}"
+            printf '| %s | %s |\n' 'Typecheck' "${TYPECHECK:-not run}"
+            printf '| %s | %s |\n' 'Build' "${BUILD:-not run}"
+            printf '| %s | %s |\n' 'Test' "${TEST:-not run}"
+            printf '| %s | %s |\n' 'Verify OSS metadata' "${VERIFY_OSS_METADATA:-not run}"
+            printf '| %s | %s |\n' 'Verify package contents' "${VERIFY_PACKAGE_CONTENTS:-not run}"
+            printf '\n[Open workflow logs](%s/%s/actions/runs/%s/attempts/%s)\n' \
+              "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+            printf '\nFailure details stay in the failing check log; this report contains only check outcomes.\n'
+          } >> "$GITHUB_STEP_SUMMARY"
