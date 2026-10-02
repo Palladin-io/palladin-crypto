@@ -111,7 +111,7 @@ export {
 export type { PassphraseOptions, PassphraseSeparator } from './passphrase-generator'
 
 // --- TOTP (RFC 6238) ---
-export { base32Decode, parseOtpauthUri, totpParamsFromSecret, generateTotp } from './totp'
+export { base32Decode, formatOtpauthUri, parseOtpauthUri, totpParamsFromSecret, generateTotp } from './totp'
 export type { TotpCode } from './totp'
 
 // --- Crypto payload types (structurally match the app's vault types) ---
@@ -137,3 +137,8 @@ export type {
 // --- Browser shared unlock receiver proof (candidate Identity contract) ---
 export * from './shared-unlock-identity-proof'
 export * from './shared-unlock-key-context'
+
+export * from './entry-share'
+export * from './entry-share-selection'
+export * from './entry-share-link'
+export * from './reason-protocol'

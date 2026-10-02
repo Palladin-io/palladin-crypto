@@ -194,3 +194,14 @@ export async function generateTotp(
     digest?.fill(0)
   }
 }
+
+export function formatOtpauthUri(value: Omit<TotpParams, 'issuer' | 'account'> & {
+  issuer?: string | null; account?: string | null
+}): string {
+  const label = [value.issuer, value.account].filter(Boolean).join(':') || 'TOTP'
+  const query = new URLSearchParams({
+    secret: value.secret, algorithm: value.algorithm, digits: String(value.digits), period: String(value.period),
+  })
+  if (value.issuer) query.set('issuer', value.issuer)
+  return `otpauth://totp/${encodeURIComponent(label)}?${query.toString()}`
+}
