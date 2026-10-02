@@ -97,6 +97,59 @@ export async function sealCanonicalCredentialEntry(
   return sealEntry(coordinates, secret, vaultKey, vaultDiscoveryKey, operation, () => projectCanonicalCredentialDiscovery(secret))
 }
 
+/** Additive writer for the current Vault plaintext model; the legacy writer remains byte-compatible. */
+export async function sealCurrentCanonicalEntry(
+  coordinates: EntryCryptoCoordinates,
+  secret: currentPlaintext.MemberSecretV1,
+  vaultKey: Uint8Array,
+  vaultDiscoveryKey: Uint8Array,
+  operation: 1 | 2 | 3 | 4 | 5,
+): Promise<CanonicalEntryEnvelopes> {
+  const entryDek = await randomBytes(32)
+  let entryWrapKey: Uint8Array | undefined
+  let indexKey: Uint8Array | undefined
+  let secretKey: Uint8Array | undefined
+  let discoveryKey: Uint8Array | undefined
+  let secretBytes: Uint8Array | undefined
+  let indexBytes: Uint8Array | undefined
+  let discoveryBytes: Uint8Array | null | undefined
+  try {
+    const index = currentPlaintext.projectMemberIndex(secret)
+    const discovery = currentPlaintext.projectAgentDiscovery(secret)
+    const keyCoordinates = { ...coordinates, revision: coordinates.entryKeyRevision ?? coordinates.revision }
+    const indexCoordinates = { ...coordinates, revision: coordinates.memberIndexRevision ?? coordinates.revision }
+    const discoveryCoordinates = { ...coordinates, revision: coordinates.agentDiscoveryRevision ?? coordinates.revision }
+    const entryKeyVersion = coordinates.entryKeyVersion ?? 1
+    const keyDescriptor = makeDescriptor(keyCoordinates, ENVELOPE_PURPOSE.entryDekByVk, entryKeyVersion, { wrappingVaultKeyVersion: coordinates.vaultKeyVersion })
+    const indexDescriptor = makeDescriptor(indexCoordinates, ENVELOPE_PURPOSE.memberIndex, entryKeyVersion, {})
+    const secretDescriptor = makeDescriptor(coordinates, ENVELOPE_PURPOSE.memberSecret, entryKeyVersion, { operation })
+    const discoveryDescriptor = makeDescriptor(discoveryCoordinates, ENVELOPE_PURPOSE.agentDiscovery, coordinates.vdkVersion, {})
+    entryWrapKey = await derived(vaultKey, keyDescriptor)
+    indexKey = await derived(entryDek, indexDescriptor)
+    secretKey = await derived(entryDek, secretDescriptor)
+    discoveryKey = await derived(vaultDiscoveryKey, discoveryDescriptor)
+    secretBytes = currentPlaintext.encodeMemberSecret(secret)
+    indexBytes = currentPlaintext.encodeMemberIndex(index)
+    discoveryBytes = discovery ? currentPlaintext.encodeAgentDiscovery(discovery) : null
+    const [entryKey, memberIndex, memberSecret, agentDiscovery] = await Promise.all([
+      sealVaultEnvelope(keyDescriptor, entryDek, entryWrapKey, { wrappingVkVersion: coordinates.vaultKeyVersion }),
+      sealVaultEnvelope(indexDescriptor, indexBytes, indexKey),
+      sealVaultEnvelope(secretDescriptor, secretBytes, secretKey, { operation }),
+      discoveryBytes ? sealVaultEnvelope(discoveryDescriptor, discoveryBytes, discoveryKey) : Promise.resolve(null),
+    ])
+    return { entryKey, memberIndex, memberSecret, agentDiscovery }
+  } finally {
+    wipe(entryDek)
+    if (entryWrapKey) wipe(entryWrapKey)
+    if (indexKey) wipe(indexKey)
+    if (secretKey) wipe(secretKey)
+    if (discoveryKey) wipe(discoveryKey)
+    secretBytes?.fill(0)
+    indexBytes?.fill(0)
+    discoveryBytes?.fill(0)
+  }
+}
+
 async function sealEntry(
   coordinates: EntryCryptoCoordinates,
   secret: MemberSecretV1,
