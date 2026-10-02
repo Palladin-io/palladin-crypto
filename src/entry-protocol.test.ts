@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { openMemberIndex, openMemberSecret, sealCanonicalEntry } from './entry-protocol'
+import { openCurrentMemberSecret, openMemberIndex, openMemberSecret, sealCanonicalEntry, sealCurrentCanonicalEntry } from './entry-protocol'
 import { deriveVaultSubkey } from './hkdf'
 import { randomBytes, wipe } from './sodium'
 import { openVaultEnvelope } from './vault-envelope'
@@ -8,8 +8,40 @@ import type { EnvelopeDescriptorContract } from './vault-envelope'
 import { VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
 import { getCryptoProvider } from './provider/active-provider'
 import type { MemberSecretV1 } from './vault-plaintext'
+import { projectAgentDiscovery, projectGrantPayload, type MemberSecretV1 as CurrentMemberSecretV1 } from './current-vault-plaintext'
 
 describe('canonical Entry protocol', () => {
+  it('seals a current Key URL without changing the legacy writer', async () => {
+    const vaultKey = await randomBytes(32)
+    const discoveryKey = await randomBytes(32)
+    const coordinates = {
+      organizationId: '00112233-4455-6677-8899-aabbccddeeff',
+      vaultId: '11112222-3333-4444-8555-666677778888',
+      entryId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', revision: '1',
+      vaultKeyVersion: 1, vdkVersion: 1, memberKeyGeneration: 1,
+    }
+    const secret: CurrentMemberSecretV1 = {
+      schema: 'palladin.member-secret.v1', entryType: 'key', memberLabel: 'API key',
+      agentLabel: 'API key', discoverable: true, description: null, icon: null, color: null,
+      agentFieldAccess: { memberLabel: 'never', agentLabel: 'discovery', description: 'never',
+        icon: 'never', color: 'never', entryType: 'discovery', 'key.value': 'onGrantValue',
+        'key.url': 'onGrantValue', notes: 'never' },
+      content: { value: 'synthetic-key', url: 'https://example.test/key', notes: null, customFields: [] },
+    }
+    try {
+      const envelopes = await sealCurrentCanonicalEntry(coordinates, secret, vaultKey, discoveryKey, 1)
+      await expect(openCurrentMemberSecret(envelopes.entryKey, envelopes.memberSecret, vaultKey, coordinates))
+        .resolves.toMatchObject({ entryType: 'key', content: { value: 'synthetic-key', url: 'https://example.test/key' } })
+      await expect(openMemberSecret(envelopes.entryKey, envelopes.memberSecret, vaultKey, coordinates)).rejects.toThrow()
+      await expect(openMemberIndex(envelopes.entryKey, envelopes.memberIndex, vaultKey, coordinates))
+        .resolves.toMatchObject({ entryType: 'key', memberLabel: 'API key' })
+      expect(envelopes.agentDiscovery).not.toBeNull()
+      expect(JSON.stringify(projectAgentDiscovery(secret))).not.toContain('https://example.test/key')
+      await expect(projectGrantPayload(secret, ['key.url'])).resolves.toMatchObject({
+        fields: [{ id: 'key.url', kind: 'url', mode: 'value', value: 'https://example.test/key' }],
+      })
+    } finally { wipe(vaultKey); wipe(discoveryKey) }
+  })
   it('wipes a generated Entry DEK when plaintext validation fails early', async () => {
     const generatedDek = new Uint8Array(32).fill(0x5a)
     const provider = getCryptoProvider()
@@ -121,6 +153,12 @@ describe('canonical Entry protocol', () => {
         entryId: envelopes.entryKey.descriptor.scope.entryId!,
         revision: '9',
       })).resolves.toMatchObject({ memberLabel: 'Token' })
+      await expect(openCurrentMemberSecret(envelopes.entryKey, envelopes.memberSecret, vaultKey, {
+        organizationId: envelopes.entryKey.descriptor.scope.organizationId,
+        vaultId: envelopes.entryKey.descriptor.scope.vaultId,
+        entryId: envelopes.entryKey.descriptor.scope.entryId!,
+        revision: '9',
+      })).resolves.toMatchObject({ entryType: 'key', content: { value: 'secret', url: null } })
     } finally { wipe(vaultKey); wipe(discoveryKey) }
   })
 
