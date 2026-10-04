@@ -195,12 +195,12 @@ The default HTTPS/loopback behavior and existing encrypted wire format are uncha
 Session HKDF also works without SubtleCrypto; a fixture from the previous WebCrypto
 implementation proves existing sessions remain decryptable.
 
-Shared-unlock hashes and HKDF use bundled `@noble/hashes`, so these operations do
+SHA-256/HKDF operations (Identity, Vault, shared unlock, scripts,
+provider frames and local generator history) use bundled `@noble/hashes` and do
 not require SubtleCrypto. `sha256Digest` and `deriveHkdfSha256` expose the same
 primitives for client crypto layers. RFC vectors, WebCrypto comparisons and
-existing independent shared-unlock vectors cover byte compatibility. Other
-package operations may still require SubtleCrypto. Client rollout, cross-tab
-serialization and an actual remote HTTP browser handoff remain separate gates;
+existing independent shared-unlock vectors cover byte compatibility. Client rollout, cross-tab serialization and an actual remote HTTP browser
+handoff remain separate gates;
 the package change alone does not establish HTTP application support.
 
 Pinned synthetic fixture SHA-256 digests (excluded from the npm package):
