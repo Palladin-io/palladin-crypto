@@ -1,4 +1,5 @@
 import { toBase64Url } from './encoding'
+import { sha256Digest } from './portable-sha256'
 
 export const SHARED_UNLOCK_KEY_CONTEXT_PROTOCOL = 'palladin.shared-unlock.key-context.v1' as const
 
@@ -42,5 +43,5 @@ export function encodeSharedUnlockKeyContext(expected: SharedUnlockKeyContext): 
  * Passing that comparison does not authorize session issuance or MK installation. */
 export async function hashSharedUnlockKeyContext(expected: SharedUnlockKeyContext): Promise<string> {
   const encoded = new Uint8Array(encodeSharedUnlockKeyContext(expected))
-  return toBase64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', encoded)))
+  return toBase64Url(sha256Digest(encoded))
 }

@@ -1,3 +1,4 @@
+import { deriveHkdfSha256 } from './portable-sha256'
 import { fromBase64Url } from './encoding'
 import { getCryptoProvider } from './provider/active-provider'
 import { wipe } from './sodium'
@@ -32,8 +33,6 @@ export interface IdentityKdfOutputs {
 
 const AUTH_INFO = 'palladin/identity/password-v1/auth-credential'
 const MASTER_KEY_INFO = 'palladin/identity/password-v1/master-key'
-const HKDF_HASH = 'SHA-256'
-const OUTPUT_BITS = 256
 
 function accountIdBytes(accountId: string): Uint8Array {
   const match = /^([0-9a-fA-F]{8})-([0-9a-fA-F]{4})-([0-9a-fA-F]{4})-([0-9a-fA-F]{4})-([0-9a-fA-F]{12})$/.exec(accountId)
@@ -51,13 +50,7 @@ async function hkdfSha256(
   const saltCopy = new Uint8Array(salt)
   const infoBytes = new TextEncoder().encode(info)
   try {
-    const key = await crypto.subtle.importKey('raw', rootCopy, 'HKDF', false, ['deriveBits'])
-    const bits = await crypto.subtle.deriveBits(
-      { name: 'HKDF', hash: HKDF_HASH, salt: saltCopy, info: infoBytes },
-      key,
-      OUTPUT_BITS,
-    )
-    return new Uint8Array(bits)
+    return deriveHkdfSha256(rootCopy, saltCopy, infoBytes)
   } finally {
     wipe(rootCopy)
     wipe(saltCopy)

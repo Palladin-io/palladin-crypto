@@ -1,0 +1,18 @@
+{
+  "protocolVersion": 1,
+  "purpose": "palladin/browser-extension/durable-session-v1",
+  "cryptoSuiteId": "palladin-vault-xchacha-v1",
+  "context": {
+    "apiUrl": "https://api.example.test",
+    "accountId": "00112233-4455-4677-8899-aabbccddeeff",
+    "clientId": "abcdefghijklmnopabcdefghijklmnop",
+    "identitySecurityVersion": 1,
+    "minimumIdentitySecurityVersion": 1,
+    "kdfProfileId": "identity-argon2id-password-v1",
+    "kdfSalt": "AAECAwQFBgcICQoLDA0ODw",
+    "encryptedPrivateKey": "AQIDBA",
+    "issuedAt": 1700000000000,
+    "expiresAt": 1702592000000
+  },
+  "encodedSuitePayload": "8l34J2fVp6CE5bpCbL_NOCZBKxGOAPHi20xtZg0AmIDbjZLEVqhkVyCj-EWPQsntoLVbtkCdF3twGhwAGw"
+}
