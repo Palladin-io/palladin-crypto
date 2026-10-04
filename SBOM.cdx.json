@@ -10,13 +10,13 @@
       }
     ],
     "component": {
-      "bom-ref": "pkg:npm/%40palladin/crypto@0.11.0",
+      "bom-ref": "pkg:npm/%40palladin/crypto@0.12.0",
       "type": "library",
       "group": "@palladin",
       "name": "crypto",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "description": "Candidate shared zero-knowledge crypto package for Palladin clients; consumer cutover is pending.",
-      "purl": "pkg:npm/%40palladin/crypto@0.11.0",
+      "purl": "pkg:npm/%40palladin/crypto@0.12.0",
       "licenses": [
         {
           "license": {
@@ -28,11 +28,11 @@
   },
   "components": [
     {
-      "bom-ref": "pkg:npm/%40noble/hashes@2.2.0",
+      "bom-ref": "pkg:npm/%40noble/hashes@2.4.0",
       "type": "library",
       "name": "@noble/hashes",
-      "version": "2.2.0",
-      "purl": "pkg:npm/%40noble/hashes@2.2.0",
+      "version": "2.4.0",
+      "purl": "pkg:npm/%40noble/hashes@2.4.0",
       "scope": "required",
       "licenses": [
         {
@@ -44,13 +44,13 @@
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "218a831a24d769be859e20209d2759c2059ba26c69cbd16d62f2cab3bc0252cd9af119084c6f831463b50ccf5cafe137fd18000d1a458eb295689d73eac8ed12"
+          "content": "5f95da5566480424fb1c76469b923b6505c3c0b1be6c65ee4ab310016fbb66f97cee1d6499cd5907555244972951fa14ac6429e05928c66e6467e32cf9a5be78"
         }
       ],
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/@noble/hashes/-/hashes-2.2.0.tgz"
+          "url": "https://registry.npmjs.org/@noble/hashes/-/hashes-2.4.0.tgz"
         }
       ]
     },
@@ -219,8 +219,9 @@
   ],
   "dependencies": [
     {
-      "ref": "pkg:npm/%40palladin/crypto@0.11.0",
+      "ref": "pkg:npm/%40palladin/crypto@0.12.0",
       "dependsOn": [
+        "pkg:npm/%40noble/hashes@2.4.0",
         "pkg:npm/%40scure/bip39@2.2.0",
         "pkg:npm/hash-wasm@4.12.0",
         "pkg:npm/libsodium-wrappers@0.8.4",
@@ -228,7 +229,7 @@
       ]
     },
     {
-      "ref": "pkg:npm/%40noble/hashes@2.2.0",
+      "ref": "pkg:npm/%40noble/hashes@2.4.0",
       "dependsOn": []
     },
     {
@@ -238,7 +239,7 @@
     {
       "ref": "pkg:npm/%40scure/bip39@2.2.0",
       "dependsOn": [
-        "pkg:npm/%40noble/hashes@2.2.0",
+        "pkg:npm/%40noble/hashes@2.4.0",
         "pkg:npm/%40scure/base@2.2.0"
       ]
     },

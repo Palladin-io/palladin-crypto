@@ -4,9 +4,9 @@ The published `@palladin/crypto` package includes the production dependencies
 listed below. Versions come from `package-lock.json`; license texts are copied
 verbatim from the corresponding installed package.
 
-## @noble/hashes 2.2.0 — MIT
+## @noble/hashes 2.4.0 — MIT
 
-Upstream package: https://www.npmjs.com/package/@noble/hashes/v/2.2.0
+Upstream package: https://www.npmjs.com/package/@noble/hashes/v/2.4.0
 
 ### LICENSE
 
