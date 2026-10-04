@@ -11,24 +11,41 @@ if (args.length > 0 && !check) throw new Error('usage: generate-oss-metadata.mjs
 const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
 
-function packagePath(name) {
-  return `node_modules/${name}`;
+function resolveDependency(name, parent = '') {
+  for (;;) {
+    const path = `${parent ? parent + '/' : ''}node_modules/${name}`;
+    const entry = lock.packages[path];
+    if (entry && entry.dev !== true) return { name, path, entry };
+    if (!parent) throw new Error(`missing locked production dependency: ${name}`);
+    const ancestor = parent.lastIndexOf('/node_modules/');
+    parent = ancestor < 0 ? '' : parent.slice(0, ancestor);
+  }
 }
 
 const selected = new Map();
-const pending = Object.keys(manifest.dependencies);
+const pending = Object.keys(manifest.dependencies).map((name) => resolveDependency(name));
 while (pending.length > 0) {
-  const name = pending.shift();
-  if (selected.has(name)) continue;
-  const entry = lock.packages[packagePath(name)];
-  if (!entry || entry.dev === true) throw new Error(`missing locked production dependency: ${name}`);
-  selected.set(name, entry);
-  pending.push(...Object.keys(entry.dependencies ?? {}));
+  const dependency = pending.shift();
+  if (selected.has(dependency.path)) continue;
+  selected.set(dependency.path, dependency);
+  pending.push(...Object.keys(dependency.entry.dependencies ?? {})
+    .map((name) => resolveDependency(name, dependency.path)));
 }
-const dependencies = [...selected].sort(([left], [right]) => left.localeCompare(right));
+const byIdentity = new Map();
+for (const dependency of selected.values()) {
+  const ref = npmPurl(dependency.name, dependency.entry.version);
+  const existing = byIdentity.get(ref);
+  const children = Object.keys(dependency.entry.dependencies ?? {}).map((name) => {
+    const child = resolveDependency(name, dependency.path);
+    return npmPurl(child.name, child.entry.version);
+  });
+  if (existing) children.forEach((child) => existing.children.add(child));
+  else byIdentity.set(ref, { ...dependency, ref, children: new Set(children) });
+}
+const dependencies = [...byIdentity.values()].sort((left, right) => left.ref.localeCompare(right.ref));
 
-function licenseDocuments(name) {
-  const directory = join(root, packagePath(name));
+function licenseDocuments(packagePath) {
+  const directory = join(root, packagePath);
   const documents = readdirSync(directory)
     .filter((file) => /^(?:licen[cs]e|copying|notice)(?:\.|$)/i.test(file))
     .sort()
@@ -38,7 +55,7 @@ function licenseDocuments(name) {
       if (!stat.isFile() || stat.isSymbolicLink()) throw new Error(`unsafe license document: ${path}`);
       return { file, text: readFileSync(path, 'utf8').replace(/\r\n/g, '\n').trimEnd() };
     });
-  if (documents.length === 0) throw new Error(`no license document found for ${name}`);
+  if (documents.length === 0) throw new Error(`no license document found for ${packagePath}`);
   return documents;
 }
 
@@ -50,10 +67,10 @@ const notice = [
   'verbatim from the corresponding installed package.',
   '',
 ];
-for (const [name, entry] of dependencies) {
+for (const { name, path, entry } of dependencies) {
   notice.push(`## ${name} ${entry.version} — ${entry.license}`, '');
   notice.push(`Upstream package: https://www.npmjs.com/package/${name}/v/${entry.version}`, '');
-  for (const document of licenseDocuments(name)) {
+  for (const document of licenseDocuments(path)) {
     notice.push(`### ${document.file}`, '', document.text, '');
   }
 }
@@ -107,13 +124,10 @@ const sbom = {
       licenses: [{ license: { id: 'Apache-2.0' } }],
     },
   },
-  components: dependencies.map(([name, entry]) => component(name, entry)),
+  components: dependencies.map(({ name, entry }) => component(name, entry)),
   dependencies: [
-    { ref: rootRef, dependsOn: Object.keys(manifest.dependencies).sort().map((name) => npmPurl(name, selected.get(name).version)) },
-    ...dependencies.map(([name, entry]) => ({
-      ref: npmPurl(name, entry.version),
-      dependsOn: Object.keys(entry.dependencies ?? {}).sort().map((child) => npmPurl(child, selected.get(child).version)),
-    })),
+    { ref: rootRef, dependsOn: Object.keys(manifest.dependencies).sort().map((name) => npmPurl(name, resolveDependency(name).entry.version)) },
+    ...dependencies.map(({ ref, children }) => ({ ref, dependsOn: [...children].sort() })),
   ],
 };
 
