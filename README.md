@@ -184,6 +184,17 @@ host and port are still bound byte-for-byte in the transcript. This option does
 not bypass browser TLS validation or protect an HTTP page against network script
 replacement.
 
+Durable browser-session envelopes accept an optional
+`BrowserSessionEnvelopeTransportPolicy` containing `allowHttpApiUrls`. Supply it
+as the final argument to `sealBrowserSessionEnvelope` / `parseBrowserSessionEnvelope`
+and as `transportPolicy` in the open options. These are exact canonical API URLs,
+including port and path, approved from local settings independently of the envelope.
+Parsing does not authenticate an envelope or its expected account/API/client;
+consumers still check their independently selected session context before use.
+The default HTTPS/loopback behavior and existing encrypted wire format are unchanged.
+Session HKDF also works without SubtleCrypto; a fixture from the previous WebCrypto
+implementation proves existing sessions remain decryptable.
+
 Shared-unlock hashes and HKDF use bundled `@noble/hashes`, so these operations do
 not require SubtleCrypto. `sha256Digest` and `deriveHkdfSha256` expose the same
 primitives for client crypto layers. RFC vectors, WebCrypto comparisons and
