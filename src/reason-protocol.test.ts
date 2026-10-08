@@ -121,7 +121,7 @@ async function signedReasonFixture(plaintext = '{"reason":"Synthetic request"}')
     organizationId: expected.organizationId, vaultId: expected.vaultId, entryId: expected.entryId,
     grantOrRequestId: expected.grantId, agentId: expected.agentId, resourceRevision,
     wrappedKeyVersion: 1, memberKeyGeneration: 1, recipientKeyKind: VAULT_KEY_KIND.vaultMessageX25519,
-    recipientKeyVersion: 1, recipientFingerprint: fingerprint, parentDescriptorHash: parentHash }
+    recipientKeyVersion: 1, recipientFingerprint: fingerprint, parentDescriptorHash: parentHash } as const
   const sealed = await sealKeyToX25519Recipient(dek, recipient.publicKey, wrapper)
   const prefix = new TextEncoder().encode('PLDNV2SIG:ENCRYPTED-REASON:'), suite = new TextEncoder().encode(X25519_SEALED_BOX_V1)
   const transcript = new Uint8Array([...prefix, 0, 2, ...aad, ...fromBase64Url(encrypted.encodedSuitePayload), 0, suite.length, ...suite, ...sealed])
