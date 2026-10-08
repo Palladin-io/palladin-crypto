@@ -1,3 +1,4 @@
+import { sha256Digest } from './portable-sha256'
 import {
   ENVELOPE_PURPOSE,
   type CanonicalEnvelopeAad,
@@ -286,5 +287,5 @@ export async function computeFieldSetCommitment(fieldIds: readonly string[]): Pr
   const input = writer.finish()
   const digestInput = new Uint8Array(input.length)
   digestInput.set(input)
-  return new Uint8Array(await crypto.subtle.digest('SHA-256', digestInput.buffer))
+  return sha256Digest(digestInput)
 }

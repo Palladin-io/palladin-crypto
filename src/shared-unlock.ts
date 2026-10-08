@@ -1,5 +1,6 @@
 import { loadSodium } from './sodium-loader'
 import { fromBase64Url, toBase64Url } from './encoding'
+import { deriveHkdfSha256, sha256Digest } from './portable-sha256'
 
 export const SHARED_UNLOCK_PROTOCOL = 'palladin.shared-unlock.v1' as const
 export const SHARED_UNLOCK_SUITE = 'X25519-HKDF-SHA256-XCHACHA20POLY1305' as const
@@ -65,7 +66,13 @@ function bytes(value: unknown, length: number): Uint8Array {
     return decoded
   } catch { return invalid() }
 }
-function context(value: unknown): SharedUnlockContext {
+export interface SharedUnlockTransportPolicy {
+  /** Exact origins approved outside the peer message or encrypted envelope.
+   * Omission retains HTTPS/loopback compatibility. Never populate from received context. */
+  readonly allowHttpOrigins?: readonly string[]
+}
+
+function context(value: unknown, policy: SharedUnlockTransportPolicy = {}): SharedUnlockContext {
   exact(value, fields)
   if (value.protocol !== SHARED_UNLOCK_PROTOCOL ||
       !['web-to-extension', 'extension-to-web'].includes(value.direction as string)) invalid()
@@ -77,7 +84,8 @@ function context(value: unknown): SharedUnlockContext {
     let url: URL
     try { url = new URL(value[name] as string) } catch { return invalid() }
     if (url.origin !== value[name] || (url.protocol !== 'https:' &&
-        !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))) invalid()
+        !(url.protocol === 'http:' && (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+          || policy.allowHttpOrigins?.includes(url.origin))))) invalid()
   }
   for (const name of ['extensionId', 'documentBinding']) {
     if (typeof value[name] !== 'string' || !/^[\x21-\x7e]{1,256}$/.test(value[name] as string)) invalid()
@@ -104,26 +112,21 @@ function encode(values: readonly (string | number)[]): Uint8Array {
   }
   return output
 }
-export function encodeSharedUnlockTranscript(expected: SharedUnlockContext, sourcePublicKey: string, recipientPublicKey: string): Uint8Array {
-  const c = context(expected)
+export function encodeSharedUnlockTranscript(expected: SharedUnlockContext, sourcePublicKey: string, recipientPublicKey: string, policy: SharedUnlockTransportPolicy = {}): Uint8Array {
+  const c = context(expected, policy)
   bytes(sourcePublicKey, 32)
   bytes(recipientPublicKey, 32)
   return encode([SHARED_UNLOCK_PROTOCOL, SHARED_UNLOCK_SUITE, ...fields.map(field => c[field]), sourcePublicKey, recipientPublicKey])
 }
 /** Hash the independently authorized complete MK transcript for the Identity proof. */
-export async function hashSharedUnlockTranscript(expected: SharedUnlockContext, sourcePublicKey: string, recipientPublicKey: string): Promise<string> {
-  const transcript = new Uint8Array(encodeSharedUnlockTranscript(expected, sourcePublicKey, recipientPublicKey))
-  return toBase64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', transcript)))
+export async function hashSharedUnlockTranscript(expected: SharedUnlockContext, sourcePublicKey: string, recipientPublicKey: string, policy: SharedUnlockTransportPolicy = {}): Promise<string> {
+  const transcript = new Uint8Array(encodeSharedUnlockTranscript(expected, sourcePublicKey, recipientPublicKey, policy))
+  return toBase64Url(sha256Digest(transcript))
 }
 
 async function derive(shared: Uint8Array<ArrayBuffer>, transcript: Uint8Array<ArrayBuffer>, direction: SharedUnlockDirection): Promise<Uint8Array> {
   try {
-    const salt = await crypto.subtle.digest('SHA-256', transcript)
-    const key = await crypto.subtle.importKey('raw', shared, 'HKDF', false, ['deriveBits'])
-    return new Uint8Array(await crypto.subtle.deriveBits({
-      name: 'HKDF', hash: 'SHA-256', salt,
-      info: encoder.encode(`${SHARED_UNLOCK_PROTOCOL}/mk/${direction}`),
-    }, key, 256))
+    return deriveHkdfSha256(shared, sha256Digest(transcript), encoder.encode(`${SHARED_UNLOCK_PROTOCOL}/mk/${direction}`))
   } finally { shared.fill(0) }
 }
 
@@ -154,10 +157,12 @@ export async function createSharedUnlockOffer(options: {
   role: 'source' | 'recipient'
   assertCurrent: (expected: Readonly<SharedUnlockContext>) => void
   now?: () => number
+  transportPolicy?: SharedUnlockTransportPolicy
 }): Promise<SharedUnlockOffer> {
   const { role, assertCurrent } = options
   if (!['source', 'recipient'].includes(role) || typeof assertCurrent !== 'function') invalid()
   const now = options.now ?? Date.now
+  const policy = { allowHttpOrigins: options.transportPolicy?.allowHttpOrigins?.slice() }
   const sodium = await loadSodium()
   const createdAt = now()
   if (!Number.isSafeInteger(createdAt) || createdAt <= 0) invalid()
@@ -173,7 +178,7 @@ export async function createSharedUnlockOffer(options: {
       try {
         if (bound || disposed) invalid()
         bound = true
-        expected = context(expectedInput)
+        expected = context(expectedInput, policy)
       } catch { dispose(); return invalid() }
       let used = false
       function check() {
@@ -188,7 +193,7 @@ export async function createSharedUnlockOffer(options: {
         check()
       }
       async function exchange(peer: string, source: string, recipient: string) {
-        const transcript = encodeSharedUnlockTranscript(expected, source, recipient)
+        const transcript = encodeSharedUnlockTranscript(expected, source, recipient, policy)
         const shared = sodium.crypto_scalarmult(pair.privateKey, bytes(peer, 32))
         try { return { transcript, key: await derive(new Uint8Array(shared), new Uint8Array(transcript), expected.direction) } }
         finally { sodium.memzero(shared) }
@@ -224,7 +229,7 @@ export async function createSharedUnlockOffer(options: {
             exact(envelope, envelopeFields)
             if (envelope.protocol !== SHARED_UNLOCK_PROTOCOL || envelope.suite !== SHARED_UNLOCK_SUITE ||
                 envelope.sourcePublicKey !== peer || envelope.recipientPublicKey !== publicKey) invalid()
-            const received = context(envelope.context)
+            const received = context(envelope.context, policy)
             if (fields.some(field => received[field] !== expected[field])) invalid()
             // Decode/copy attacker-controlled inputs before awaiting derivation.
             const nonce = bytes(envelope.nonce, 24)
