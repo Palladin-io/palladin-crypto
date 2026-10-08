@@ -10,6 +10,9 @@ and `reason-protocol.ts`. The sharing fixture preserves that client's independen
 generated Python/native-libsodium AAD and ciphertext vector. Tests cover recipient
 coordinates, nanosecond expiry, revisions above JavaScript's safe integer range,
 field types, complete card/CVV/TOTP copies, ciphertext tampering and signature tampering.
+TOTP issuer/account metadata with surrounding whitespace is rejected instead of
+being silently trimmed by the existing URI parser; null and colon-bearing metadata
+round-trip without inventing or changing an account.
 
 Consumers must supply authenticated/request-bound scope coordinates, never derive
 expected coordinates from the envelope being opened. A grant reason additionally

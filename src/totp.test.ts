@@ -128,3 +128,10 @@ it.each([null, 'Palladin', 'Acme:Prod'].flatMap(issuer => [null, 'alice', 'alice
   expect(parsed?.account).toBe(account ?? undefined)
   expect(parsed?.issuer).toBe(issuer ?? undefined)
 })
+
+it.each(['issuer', 'account'] as const)('rejects whitespace that the existing parser would trim from %s', field => {
+  for (const value of [' alice ', '\talice', 'alice\n', ' ']) {
+    expect(() => formatOtpauthUri({ secret: 'JBSWY3DPEHPK3PXP', algorithm: 'SHA1', digits: 6, period: 30, [field]: value }))
+      .toThrow('TOTP metadata cannot be represented without changes')
+  }
+})
