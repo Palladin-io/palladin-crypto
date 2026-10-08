@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { base32Decode, generateTotp, parseOtpauthUri, totpParamsFromSecret } from './totp'
+import { base32Decode, formatOtpauthUri, generateTotp, parseOtpauthUri, totpParamsFromSecret } from './totp'
 import type { TotpParams } from './payload-types'
 
 /** Local base32 encoder — used only to turn the RFC 6238 ASCII seeds into the
@@ -121,4 +121,17 @@ describe('totpParamsFromSecret', () => {
   it('returns null for a non-base32 secret', () => {
     expect(totpParamsFromSecret('!!!not base32!!!')).toBeNull()
   })
+})
+
+it.each([null, 'Palladin', 'Acme:Prod'].flatMap(issuer => [null, 'alice', 'alice:ops'].map(account => ({ issuer, account }))))('preserves TOTP metadata $issuer / $account', ({ issuer, account }) => {
+  const parsed = parseOtpauthUri(formatOtpauthUri({ secret: 'JBSWY3DPEHPK3PXP', algorithm: 'SHA1', digits: 6, period: 30, issuer, account }))
+  expect(parsed?.account).toBe(account ?? undefined)
+  expect(parsed?.issuer).toBe(issuer ?? undefined)
+})
+
+it.each(['issuer', 'account'] as const)('rejects whitespace that the existing parser would trim from %s', field => {
+  for (const value of [' alice ', '\talice', 'alice\n', ' ']) {
+    expect(() => formatOtpauthUri({ secret: 'JBSWY3DPEHPK3PXP', algorithm: 'SHA1', digits: 6, period: 30, [field]: value }))
+      .toThrow('TOTP metadata cannot be represented without changes')
+  }
 })
