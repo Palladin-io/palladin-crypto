@@ -198,7 +198,9 @@ export async function generateTotp(
 export function formatOtpauthUri(value: Omit<TotpParams, 'issuer' | 'account'> & {
   issuer?: string | null; account?: string | null
 }): string {
-  const label = value.issuer ? `${value.issuer}:${value.account ?? ''}` : (value.account ?? '')
+  // A colon-bearing issuer belongs only in the query, not the label separator.
+  const issuerLabel = value.issuer?.includes(':') ? '' : (value.issuer ?? '')
+  const label = `${issuerLabel}:${value.account ?? ''}`
   const query = new URLSearchParams({
     secret: value.secret, algorithm: value.algorithm, digits: String(value.digits), period: String(value.period),
   })

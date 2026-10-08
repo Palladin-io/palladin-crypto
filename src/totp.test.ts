@@ -123,8 +123,8 @@ describe('totpParamsFromSecret', () => {
   })
 })
 
-it.each([null, 'Palladin'])('preserves an absent TOTP account with issuer %s', issuer => {
-  const parsed = parseOtpauthUri(formatOtpauthUri({ secret: 'JBSWY3DPEHPK3PXP', algorithm: 'SHA1', digits: 6, period: 30, issuer, account: null }))
-  expect(parsed?.account).toBeUndefined()
+it.each([null, 'Palladin', 'Acme:Prod'].flatMap(issuer => [null, 'alice', 'alice:ops'].map(account => ({ issuer, account }))))('preserves TOTP metadata $issuer / $account', ({ issuer, account }) => {
+  const parsed = parseOtpauthUri(formatOtpauthUri({ secret: 'JBSWY3DPEHPK3PXP', algorithm: 'SHA1', digits: 6, period: 30, issuer, account }))
+  expect(parsed?.account).toBe(account ?? undefined)
   expect(parsed?.issuer).toBe(issuer ?? undefined)
 })
