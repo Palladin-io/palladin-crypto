@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ENVELOPE_PURPOSE } from './envelope'
 import { openEncryptedReason, verifyEncryptedReasonSignature, type EncryptedReasonContract } from './reason-protocol'
 import { VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
@@ -85,4 +85,67 @@ describe('openEncryptedReason', () => {
       agentId: envelope.descriptor.scope.agentId!,
     })).rejects.toThrow('outer resource scope')
   })
+})
+
+import { sealVaultEnvelope, toEnvelopeDescriptor } from './vault-envelope'
+import { encodeCanonicalEnvelopeAad } from './canonical-aad'
+import { sealKeyToX25519Recipient, WRAPPER_PURPOSE } from './x25519-wrapper'
+import { fromBase64Url } from './encoding'
+import { sha256Digest } from './portable-sha256'
+afterEach(() => vi.unstubAllGlobals())
+
+async function signedReasonFixture(plaintext = '{"reason":"Synthetic request"}') {
+  const sodium = await loadSodium()
+  const expected = {
+    organizationId: '00112233-4455-6677-8899-aabbccddeeff', vaultId: '11112222-3333-4444-8555-666677778888',
+    entryId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', grantId: '12345678-1234-4234-8234-1234567890ab',
+    agentId: 'fedcba98-7654-4321-8765-abcdefabcdef',
+  }
+  const vaultKey = new Uint8Array(32).fill(5), dek = new Uint8Array(32).fill(3)
+  const recipient = sodium.crypto_box_keypair(), signing = sodium.crypto_sign_keypair()
+  const fingerprint = await computeVaultKeyFingerprint(recipient.publicKey, VAULT_KEY_KIND.vaultMessageX25519)
+  const descriptor: EncryptedReasonContract['descriptor'] = {
+    protocolVersion: 2, cryptoSuiteId: VAULT_XCHACHA20_POLY1305_V1, purpose: ENVELOPE_PURPOSE.reason,
+    scope: { organizationId: expected.organizationId, vaultId: expected.vaultId, entryId: expected.entryId,
+      grantOrRequestId: expected.grantId, agentId: expected.agentId },
+    resourceRevision: '1', keyVersion: 1, memberKeyGeneration: 1,
+    binding: { wrapperSuiteId: X25519_SEALED_BOX_V1, recipientKeyVersion: 1, recipientKeyFingerprint: toBase64Url(fingerprint), requestedMethods: 1 },
+  }
+  const extension = { wrapperSuiteId: X25519_SEALED_BOX_V1, recipientKeyVersion: 1, recipientKeyFingerprint: fingerprint, methods: 1 }
+  const { resourceRevision, ...kdf } = toEnvelopeDescriptor(descriptor)
+  const payloadKey = await deriveVaultSubkey(dek, kdf)
+  const encrypted = await sealVaultEnvelope(descriptor, new TextEncoder().encode(plaintext), payloadKey, extension)
+  const aad = encodeCanonicalEnvelopeAad(toEnvelopeDescriptor(descriptor), extension)
+  const parentHash = sha256Digest(aad)
+  const wrapper = { protocolVersion: 2, wrapperSuiteId: X25519_SEALED_BOX_V1, purpose: WRAPPER_PURPOSE.reasonDek,
+    organizationId: expected.organizationId, vaultId: expected.vaultId, entryId: expected.entryId,
+    grantOrRequestId: expected.grantId, agentId: expected.agentId, resourceRevision,
+    wrappedKeyVersion: 1, memberKeyGeneration: 1, recipientKeyKind: VAULT_KEY_KIND.vaultMessageX25519,
+    recipientKeyVersion: 1, recipientFingerprint: fingerprint, parentDescriptorHash: parentHash }
+  const sealed = await sealKeyToX25519Recipient(dek, recipient.publicKey, wrapper)
+  const prefix = new TextEncoder().encode('PLDNV2SIG:ENCRYPTED-REASON:'), suite = new TextEncoder().encode(X25519_SEALED_BOX_V1)
+  const transcript = new Uint8Array([...prefix, 0, 2, ...aad, ...fromBase64Url(encrypted.encodedSuitePayload), 0, suite.length, ...suite, ...sealed])
+  const envelope: EncryptedReasonContract = { ...encrypted, agentSignature: toBase64Url(sodium.crypto_sign_detached(transcript, signing.privateKey)),
+    wrappedReasonDek: { descriptor: { ...wrapper, scope: descriptor.scope, resourceRevision: '1', recipientFingerprint: toBase64Url(fingerprint), parentDescriptorHash: toBase64Url(parentHash) }, encodedSealedKeyPackage: toBase64Url(sealed) } }
+  const privateDescriptor = { protocolVersion: 2, cryptoSuiteId: VAULT_XCHACHA20_POLY1305_V1, purpose: ENVELOPE_PURPOSE.agentMessagePrivateByVk,
+    scope: { organizationId: expected.organizationId, vaultId: expected.vaultId }, resourceRevision: '1', keyVersion: 1, memberKeyGeneration: 1, binding: { wrappingVaultKeyVersion: 1 } }
+  const { resourceRevision: ignored, ...privateKdf } = toEnvelopeDescriptor(privateDescriptor)
+  void ignored
+  const wrappingKey = await deriveVaultSubkey(vaultKey, privateKdf)
+  const privateEnvelope = await sealVaultEnvelope(privateDescriptor, recipient.privateKey, wrappingKey, { wrappingVkVersion: 1 })
+  const identity = { publicKey: toBase64(signing.publicKey), keyVersion: 1, keyFingerprint: toBase64Url(await computeVaultKeyFingerprint(signing.publicKey, VAULT_KEY_KIND.agentEd25519)) }
+  wipe(recipient.privateKey); wipe(signing.privateKey); wipe(payloadKey); wipe(wrappingKey); wipe(dek)
+  return { envelope, privateEnvelope, identity, expected, vaultKey }
+}
+
+it('opens a complete signed reason without SubtleCrypto', async () => {
+  const f = await signedReasonFixture()
+  vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) })
+  try { await expect(openEncryptedReason(f.envelope, [f.privateEnvelope], f.vaultKey, f.identity, f.expected)).resolves.toBe('Synthetic request') }
+  finally { wipe(f.vaultKey) }
+})
+it('never exposes decrypted malformed JSON in errors', async () => {
+  const f = await signedReasonFixture('PRIVATE_SYNTHETIC_REASON not JSON')
+  try { await expect(openEncryptedReason(f.envelope, [f.privateEnvelope], f.vaultKey, f.identity, f.expected)).rejects.toThrow(/^Encrypted reason plaintext contract is invalid$/) }
+  finally { wipe(f.vaultKey) }
 })

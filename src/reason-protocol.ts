@@ -1,3 +1,4 @@
+import { sha256Digest } from './portable-sha256'
 import { ENVELOPE_PURPOSE } from './envelope'
 import { VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
 import { encodeCanonicalEnvelopeAad } from './canonical-aad'
@@ -118,7 +119,7 @@ export async function openEncryptedReason(
     methods: envelope.descriptor.binding.requestedMethods,
   }
   const descriptorBytes = encodeCanonicalEnvelopeAad(toEnvelopeDescriptor(envelope.descriptor), reasonExtension)
-  const expectedParentHash = new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(descriptorBytes).buffer))
+  const expectedParentHash = sha256Digest(descriptorBytes)
   const suppliedParentHash = wrapper.parentDescriptorHash ? fromBase64Url(wrapper.parentDescriptorHash) : new Uint8Array()
   if (expectedParentHash.length !== suppliedParentHash.length
     || expectedParentHash.some((value, index) => value !== suppliedParentHash[index])) {
@@ -187,6 +188,9 @@ export async function openEncryptedReason(
         throw new Error('Encrypted reason plaintext contract is invalid')
       }
       return decoded.reason
+    } catch {
+      // JSON parser diagnostics may contain decrypted input.
+      throw new Error('Encrypted reason plaintext contract is invalid')
     } finally { wipe(plaintext) }
   } finally {
     wipe(wrappingKey)

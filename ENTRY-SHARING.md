@@ -1,6 +1,6 @@
 # Entry sharing and signed grant reasons
 
-The additive 0.11.0 API moves the current web client's Entry-sharing v1 producer,
+The additive 0.13.0 API moves the current web client's Entry-sharing v1 producer,
 receiver, link codec and complete-Entry projection into the shared SDK. It also
 exports verification and decryption of the signed Protocol 2 grant-request reason.
 Existing encrypted formats and existing exports are unchanged.
