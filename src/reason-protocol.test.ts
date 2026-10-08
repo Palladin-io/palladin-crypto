@@ -149,3 +149,16 @@ it('never exposes decrypted malformed JSON in errors', async () => {
   try { await expect(openEncryptedReason(f.envelope, [f.privateEnvelope], f.vaultKey, f.identity, f.expected)).rejects.toThrow(/^Encrypted reason plaintext contract is invalid$/) }
   finally { wipe(f.vaultKey) }
 })
+
+it.each(['payload', 'wrapper', 'signature', 'publicKey'] as const)('rejects oversized %s before decoding its bytes', async field => {
+  const oversized = 'A'.repeat(field === 'payload' ? 1_500_000 : 512)
+  const decode = vi.spyOn(globalThis, 'atob')
+  try {
+    await expect(verifyEncryptedReasonSignature(new Uint8Array([1]),
+      field === 'payload' ? oversized : 'AA', field === 'wrapper' ? oversized : 'AA',
+      field === 'signature' ? oversized : 'AA',
+      { publicKey: field === 'publicKey' ? oversized : toBase64(new Uint8Array(32)), keyVersion: 1, keyFingerprint: '' },
+    )).rejects.toThrow()
+    expect(decode.mock.calls.some(([value]) => value.startsWith(oversized))).toBe(false)
+  } finally { decode.mockRestore() }
+})

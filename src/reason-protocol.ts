@@ -1,6 +1,6 @@
 import { sha256Digest } from './portable-sha256'
 import { ENVELOPE_PURPOSE } from './envelope'
-import { VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
+import { MAX_ENCODED_SUITE_PAYLOAD_BYTES, VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
 import { encodeCanonicalEnvelopeAad } from './canonical-aad'
 import { fromBase64, fromBase64Url, toBase64Url } from './encoding'
 import { deriveVaultSubkey } from './hkdf'
@@ -45,11 +45,12 @@ export async function verifyEncryptedReasonSignature(
   signatureValue: string,
   agentSigning: AgentSigningIdentity,
 ): Promise<void> {
-  const encodedPayload = fromBase64Url(encodedSuitePayload)
-  const encodedWrapper = fromBase64Url(encodedSealedKeyPackage)
+  const encodedPayload = fromBase64Url(encodedSuitePayload, MAX_ENCODED_SUITE_PAYLOAD_BYTES)
+  const encodedWrapper = fromBase64Url(encodedSealedKeyPackage, 120)
   if (agentSigning.keyVersion !== 1) throw new Error('Unsupported Agent signing key version')
+  if (agentSigning.publicKey.length !== 44) throw new Error('Invalid Agent signing public key')
   const signingPublicKey = fromBase64(agentSigning.publicKey)
-  const signature = fromBase64Url(signatureValue)
+  const signature = fromBase64Url(signatureValue, 64)
   const signaturePrefix = new TextEncoder().encode('PLDNV2SIG:ENCRYPTED-REASON:')
   const wrapperSuite = new TextEncoder().encode(X25519_SEALED_BOX_V1)
   const transcript = new Uint8Array(signaturePrefix.length + 2 + descriptorBytes.length
@@ -115,12 +116,12 @@ export async function openEncryptedReason(
   const reasonExtension = {
     wrapperSuiteId: envelope.descriptor.binding.wrapperSuiteId,
     recipientKeyVersion: envelope.descriptor.binding.recipientKeyVersion,
-    recipientKeyFingerprint: fromBase64Url(envelope.descriptor.binding.recipientKeyFingerprint),
+    recipientKeyFingerprint: fromBase64Url(envelope.descriptor.binding.recipientKeyFingerprint, 32),
     methods: envelope.descriptor.binding.requestedMethods,
   }
   const descriptorBytes = encodeCanonicalEnvelopeAad(toEnvelopeDescriptor(envelope.descriptor), reasonExtension)
   const expectedParentHash = sha256Digest(descriptorBytes)
-  const suppliedParentHash = wrapper.parentDescriptorHash ? fromBase64Url(wrapper.parentDescriptorHash) : new Uint8Array()
+  const suppliedParentHash = wrapper.parentDescriptorHash ? fromBase64Url(wrapper.parentDescriptorHash, 32) : new Uint8Array()
   if (expectedParentHash.length !== suppliedParentHash.length
     || expectedParentHash.some((value, index) => value !== suppliedParentHash[index])) {
     expectedParentHash.fill(0); suppliedParentHash.fill(0)
@@ -149,7 +150,7 @@ export async function openEncryptedReason(
     })
     messagePublicKey = sodium.crypto_scalarmult_base(messagePrivateKey)
     reasonDek = await openKeyFromX25519Recipient(
-      fromBase64Url(envelope.wrappedReasonDek.encodedSealedKeyPackage), messagePublicKey, messagePrivateKey,
+      fromBase64Url(envelope.wrappedReasonDek.encodedSealedKeyPackage, 120), messagePublicKey, messagePrivateKey,
       {
         protocolVersion: 2, wrapperSuiteId: X25519_SEALED_BOX_V1, purpose: WRAPPER_PURPOSE.reasonDek,
         organizationId: expected.organizationId, vaultId: expected.vaultId, entryId: expected.entryId,
@@ -158,8 +159,8 @@ export async function openEncryptedReason(
         memberKeyGeneration: wrapper.memberKeyGeneration ?? undefined,
         recipientKeyKind: VAULT_KEY_KIND.vaultMessageX25519,
         recipientKeyVersion: wrapper.recipientKeyVersion,
-        recipientFingerprint: fromBase64Url(wrapper.recipientFingerprint),
-        parentDescriptorHash: wrapper.parentDescriptorHash ? fromBase64Url(wrapper.parentDescriptorHash) : undefined,
+        recipientFingerprint: fromBase64Url(wrapper.recipientFingerprint, 32),
+        parentDescriptorHash: wrapper.parentDescriptorHash ? fromBase64Url(wrapper.parentDescriptorHash, 32) : undefined,
       },
     )
     // Canonical Rust writers treat the unwrapped ReasonDEK as root key

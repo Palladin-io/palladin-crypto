@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { base32Decode, generateTotp, parseOtpauthUri, totpParamsFromSecret } from './totp'
+import { base32Decode, formatOtpauthUri, generateTotp, parseOtpauthUri, totpParamsFromSecret } from './totp'
 import type { TotpParams } from './payload-types'
 
 /** Local base32 encoder — used only to turn the RFC 6238 ASCII seeds into the
@@ -121,4 +121,10 @@ describe('totpParamsFromSecret', () => {
   it('returns null for a non-base32 secret', () => {
     expect(totpParamsFromSecret('!!!not base32!!!')).toBeNull()
   })
+})
+
+it.each([null, 'Palladin'])('preserves an absent TOTP account with issuer %s', issuer => {
+  const parsed = parseOtpauthUri(formatOtpauthUri({ secret: 'JBSWY3DPEHPK3PXP', algorithm: 'SHA1', digits: 6, period: 30, issuer, account: null }))
+  expect(parsed?.account).toBeUndefined()
+  expect(parsed?.issuer).toBe(issuer ?? undefined)
 })
