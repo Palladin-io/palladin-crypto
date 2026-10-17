@@ -1,3 +1,4 @@
+import { sha256Digest } from './portable-sha256'
 import { z } from 'zod'
 import * as currentPlaintext from './current-vault-plaintext'
 
@@ -308,7 +309,7 @@ export async function scriptExecutionManifestDigest(value: ScriptExecutionManife
   input.set(domain)
   input.set(manifest, domain.length)
   try {
-    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', input))
+    const digest = sha256Digest(input)
     return base64Url(digest)
   } finally {
     manifest.fill(0)
@@ -975,7 +976,7 @@ async function hashWithDomain(domain: string, bytes: Uint8Array): Promise<Uint8A
   input.set(prefix)
   input.set(bytes, prefix.length)
   try {
-    return new Uint8Array(await crypto.subtle.digest('SHA-256', input))
+    return sha256Digest(input)
   } finally {
     wipe(prefix)
     wipe(input)

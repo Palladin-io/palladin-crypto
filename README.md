@@ -174,6 +174,35 @@ a peer payload or encrypted envelope as its own expected authority. Node golden
 vectors cover exact bytes and substitution of every field, with matching .NET
 consumer tests. No plaintext private key or MK is included in this descriptor.
 
+Self-hosted HTTP transport requires an independent, exact-origin opt-in. Pass
+`transportPolicy: { allowHttpOrigins: [...] }` to `createSharedUnlockOffer` and the
+same policy as the last argument to transcript encoding/hashing. Populate this
+list only from user-approved client configuration, never from the received
+envelope or peer message. Offers snapshot the policy. Without it, remote HTTP
+remains rejected; existing HTTPS and loopback behavior is preserved. Scheme,
+host and port are still bound byte-for-byte in the transcript. This option does
+not bypass browser TLS validation or protect an HTTP page against network script
+replacement.
+
+Durable browser-session envelopes accept an optional
+`BrowserSessionEnvelopeTransportPolicy` containing `allowHttpApiUrls`. Supply it
+as the final argument to `sealBrowserSessionEnvelope` / `parseBrowserSessionEnvelope`
+and as `transportPolicy` in the open options. These are exact canonical API URLs,
+including port and path, approved from local settings independently of the envelope.
+Parsing does not authenticate an envelope or its expected account/API/client;
+consumers still check their independently selected session context before use.
+The default HTTPS/loopback behavior and existing encrypted wire format are unchanged.
+Session HKDF also works without SubtleCrypto; a fixture from the previous WebCrypto
+implementation proves existing sessions remain decryptable.
+
+SHA-256/HKDF operations (Identity, Vault, shared unlock, scripts,
+provider frames and local generator history) use bundled `@noble/hashes` and do
+not require SubtleCrypto. `sha256Digest` and `deriveHkdfSha256` expose the same
+primitives for client crypto layers. RFC vectors, WebCrypto comparisons and
+existing independent shared-unlock vectors cover byte compatibility. Client rollout, cross-tab serialization and an actual remote HTTP browser
+handoff remain separate gates;
+the package change alone does not establish HTTP application support.
+
 Pinned synthetic fixture SHA-256 digests (excluded from the npm package):
 
 - `fixtures.json`: `a601282fec02f545ccf03dc5d3ddbe078ed7589965a7b0ae40af95854780c332`

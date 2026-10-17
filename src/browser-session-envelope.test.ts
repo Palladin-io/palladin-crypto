@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   BROWSER_SESSION_ENVELOPE_PROTOCOL_VERSION,
@@ -9,6 +9,7 @@ import {
 } from './browser-session-envelope'
 import { fromBase64Url } from './encoding'
 import { wipe } from './sodium'
+import webCryptoFixture from './fixtures/browser-session-webcrypto-v1.json'
 
 const context: BrowserSessionEnvelopeContext = {
   apiUrl: 'https://api.palladin.io',
@@ -25,6 +26,61 @@ const context: BrowserSessionEnvelopeContext = {
 const validTime = { now: () => context.issuedAt + 1_000 }
 
 describe('browser durable-session envelope', () => {
+  it('decrypts the previous WebCrypto implementation fixture without changing wire bytes', async () => {
+    // Generated with the pre-portable implementation and synthetic key 0x4a × 32.
+    const key = new Uint8Array(32).fill(0x4a)
+    try {
+      const plaintext = await openBrowserSessionEnvelope(webCryptoFixture, key, validTime)
+      try { expect(new TextDecoder().decode(plaintext)).toBe('compatibility fixture') }
+      finally { wipe(plaintext) }
+    } finally { wipe(key) }
+  })
+  it('requires independent approval for the exact HTTP API URL when sealing, parsing and opening', async () => {
+    const key = new Uint8Array(32).fill(0x48)
+    const plaintext = new TextEncoder().encode('session')
+    const httpContext = { ...context, apiUrl: 'http://vault.example.test:8080/api' }
+    const policy = { allowHttpApiUrls: [httpContext.apiUrl] }
+    try {
+      await expect(sealBrowserSessionEnvelope(plaintext, key, httpContext)).rejects.toThrow('approved HTTP')
+      const envelope = await sealBrowserSessionEnvelope(plaintext, key, httpContext, policy)
+      expect(parseBrowserSessionEnvelope(envelope, policy).context).toEqual(httpContext)
+      expect(() => parseBrowserSessionEnvelope(envelope)).toThrow('approved HTTP')
+      await expect(openBrowserSessionEnvelope(envelope, key, validTime)).rejects.toThrow('approved HTTP')
+      await expect(openBrowserSessionEnvelope(envelope, key, {
+        ...validTime, transportPolicy: policy,
+      })).resolves.toEqual(plaintext)
+      for (const apiUrl of [
+        'http://vault.example.test:8081/api',
+        'http://vault.example.test:8080/other',
+        'http://sibling.example.test:8080/api',
+      ]) {
+        const differentPolicy = { allowHttpApiUrls: [apiUrl] }
+        expect(() => parseBrowserSessionEnvelope(envelope, differentPolicy)).toThrow('approved HTTP')
+        await expect(openBrowserSessionEnvelope(envelope, key, {
+          ...validTime, transportPolicy: differentPolicy,
+        })).rejects.toThrow('approved HTTP')
+      }
+      expect(() => parseBrowserSessionEnvelope({ ...envelope, transportPolicy: policy })).toThrow('unexpected fields')
+    } finally {
+      wipe(key)
+      wipe(plaintext)
+    }
+  })
+
+  it('round-trips without SubtleCrypto', async () => {
+    const key = new Uint8Array(32).fill(0x49)
+    const plaintext = new TextEncoder().encode('session')
+    const subtle = vi.spyOn(globalThis.crypto, 'subtle', 'get').mockReturnValue(undefined as unknown as SubtleCrypto)
+    try {
+      const envelope = await sealBrowserSessionEnvelope(plaintext, key, context)
+      await expect(openBrowserSessionEnvelope(envelope, key, validTime)).resolves.toEqual(plaintext)
+    } finally {
+      subtle.mockRestore()
+      wipe(key)
+      wipe(plaintext)
+    }
+  })
+
   it('round-trips under a domain-separated master-key subkey', async () => {
     const key = new Uint8Array(32).fill(0x41)
     const plaintext = new TextEncoder().encode('{"refreshToken":"secret"}')

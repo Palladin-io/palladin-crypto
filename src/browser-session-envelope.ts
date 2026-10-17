@@ -2,13 +2,13 @@ import { fromBase64Url, toBase64Url } from './encoding'
 import type { CanonicalEnvelopeAad, EncodedSuitePayload } from './envelope'
 import { requireCryptoSuite, VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
 import { wipe } from './sodium'
+import { deriveHkdfSha256 } from './portable-sha256'
 
 export const BROWSER_SESSION_ENVELOPE_PROTOCOL_VERSION = 1
 export const BROWSER_SESSION_ENVELOPE_PURPOSE = 'palladin/browser-extension/durable-session-v1'
 
 const AAD_MAGIC = new TextEncoder().encode('PLDNBSE1')
 const KDF_MAGIC = new TextEncoder().encode('PLDNBSDK1')
-const HKDF_HASH = 'SHA-256'
 const KEY_BYTES = 32
 const ABSENT_SALT = new Uint8Array(32)
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -41,7 +41,13 @@ export interface BrowserSessionEnvelope {
   readonly encodedSuitePayload: string
 }
 
+export interface BrowserSessionEnvelopeTransportPolicy {
+  /** Exact canonical API URLs approved independently by local connection settings. */
+  readonly allowHttpApiUrls?: readonly string[]
+}
+
 export interface BrowserSessionEnvelopeOpenOptions {
+  readonly transportPolicy?: BrowserSessionEnvelopeTransportPolicy
   /** Injectable wall clock used only to enforce the authenticated validity window. */
   readonly now?: () => number
 }
@@ -133,7 +139,7 @@ function string(value: unknown, label: string): string {
   return value
 }
 
-function canonicalApiUrl(value: string): string {
+function canonicalApiUrl(value: string, policy: BrowserSessionEnvelopeTransportPolicy): string {
   if (value.length > MAX_API_URL_BYTES) {
     throw new RangeError('Browser session API URL is too long')
   }
@@ -150,8 +156,8 @@ function canonicalApiUrl(value: string): string {
     throw new TypeError('Browser session API URL contains forbidden components')
   }
   const loopback = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1'
-  if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && loopback)) {
-    throw new TypeError('Browser session API URL must use HTTPS or loopback HTTP')
+  if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && (loopback || policy.allowHttpApiUrls?.includes(value)))) {
+    throw new TypeError('Browser session API URL requires HTTPS or independently approved HTTP')
   }
   const path = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/+$/, '')
   const canonical = `${parsed.origin}${path}`
@@ -159,7 +165,7 @@ function canonicalApiUrl(value: string): string {
   return canonical
 }
 
-function parseContext(value: unknown): BrowserSessionEnvelopeContext {
+function parseContext(value: unknown, policy: BrowserSessionEnvelopeTransportPolicy): BrowserSessionEnvelopeContext {
   const input = record(value, 'Browser session context')
   exactKeys(input, [
     'apiUrl',
@@ -174,7 +180,7 @@ function parseContext(value: unknown): BrowserSessionEnvelopeContext {
     'expiresAt',
   ], 'Browser session context')
 
-  const apiUrl = canonicalApiUrl(string(input.apiUrl, 'API URL'))
+  const apiUrl = canonicalApiUrl(string(input.apiUrl, 'API URL'), policy)
   const accountId = string(input.accountId, 'Account ID')
   const clientId = string(input.clientId, 'Client ID')
   const identitySecurityVersion = integer(input.identitySecurityVersion, 'Identity security version')
@@ -228,8 +234,7 @@ function parseContext(value: unknown): BrowserSessionEnvelopeContext {
   }
 }
 
-function encodeContext(context: BrowserSessionEnvelopeContext, magic: Uint8Array): Uint8Array {
-  const normalized = parseContext(context)
+function encodeContext(normalized: BrowserSessionEnvelopeContext, magic: Uint8Array): Uint8Array {
   const writer = new BinaryWriter()
   writer.bytes(magic)
   writer.u16(BROWSER_SESSION_ENVELOPE_PROTOCOL_VERSION)
@@ -261,13 +266,7 @@ async function deriveSessionKey(masterKey: Uint8Array, context: BrowserSessionEn
   infoCopy.set(encodedContext)
   wipe(encodedContext)
   try {
-    const key = await crypto.subtle.importKey('raw', rootCopy, 'HKDF', false, ['deriveBits'])
-    const bits = await crypto.subtle.deriveBits(
-      { name: 'HKDF', hash: HKDF_HASH, salt: saltCopy, info: infoCopy },
-      key,
-      KEY_BYTES * 8,
-    )
-    return new Uint8Array(bits)
+    return deriveHkdfSha256(rootCopy, saltCopy, infoCopy, KEY_BYTES)
   } finally {
     wipe(rootCopy)
     wipe(saltCopy)
@@ -275,7 +274,10 @@ async function deriveSessionKey(masterKey: Uint8Array, context: BrowserSessionEn
   }
 }
 
-export function parseBrowserSessionEnvelope(value: unknown): BrowserSessionEnvelope {
+export function parseBrowserSessionEnvelope(
+  value: unknown,
+  policy: BrowserSessionEnvelopeTransportPolicy = {},
+): BrowserSessionEnvelope {
   const input = record(value, 'Browser session envelope')
   exactKeys(input, [
     'protocolVersion',
@@ -293,7 +295,7 @@ export function parseBrowserSessionEnvelope(value: unknown): BrowserSessionEnvel
   if (input.cryptoSuiteId !== VAULT_XCHACHA20_POLY1305_V1) {
     throw new TypeError('Unsupported browser session crypto suite')
   }
-  const context = parseContext(input.context)
+  const context = parseContext(input.context, policy)
   const encodedSuitePayload = string(input.encodedSuitePayload, 'Encoded session payload')
   const payload = fromBase64Url(encodedSuitePayload, MAX_SESSION_PLAINTEXT_BYTES + 64)
   try {
@@ -314,11 +316,12 @@ export async function sealBrowserSessionEnvelope(
   plaintext: Uint8Array,
   masterKey: Uint8Array,
   context: BrowserSessionEnvelopeContext,
+  policy: BrowserSessionEnvelopeTransportPolicy = {},
 ): Promise<BrowserSessionEnvelope> {
   if (plaintext.length === 0 || plaintext.length > MAX_SESSION_PLAINTEXT_BYTES) {
     throw new RangeError('Browser session plaintext has an invalid length')
   }
-  const normalized = parseContext(context)
+  const normalized = parseContext(context, policy)
   const aad = encodeContext(normalized, AAD_MAGIC) as CanonicalEnvelopeAad
   let sessionKey: Uint8Array | null = null
   try {
@@ -350,7 +353,7 @@ export async function openBrowserSessionEnvelope(
   masterKey: Uint8Array,
   options: BrowserSessionEnvelopeOpenOptions = {},
 ): Promise<Uint8Array> {
-  const envelope = parseBrowserSessionEnvelope(value)
+  const envelope = parseBrowserSessionEnvelope(value, options.transportPolicy)
   const now = (options.now ?? Date.now)()
   if (!Number.isSafeInteger(now) || now < 0) {
     throw new TypeError('Browser session clock must return a non-negative safe integer')

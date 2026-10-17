@@ -1,3 +1,4 @@
+import { sha256Digest } from './portable-sha256'
 import { computeFieldSetCommitment, encodeDeliveryBoundGrantAad } from './canonical-aad'
 import { requireCryptoSuite, VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
 import { ENVELOPE_PURPOSE } from './envelope'
@@ -122,7 +123,7 @@ async function buildGrantEnvelope(input: BuildGrantEnvelopeInput, version: 1 | 2
     const encrypted = await requireCryptoSuite(descriptor.cryptoSuiteId).seal({ plaintext, key: payloadKey, aad: descriptorBytes })
     const envelope = { descriptor, encodedSuitePayload: toBase64Url(encrypted) }
     const descriptorCopy = new Uint8Array(descriptorBytes)
-    const parentHash = new Uint8Array(await crypto.subtle.digest('SHA-256', descriptorCopy.buffer))
+    const parentHash = sha256Digest(descriptorCopy)
     try {
       const wrapperContext = {
         protocolVersion: 2, wrapperSuiteId: X25519_SEALED_BOX_V1, purpose: WRAPPER_PURPOSE.grantDek,

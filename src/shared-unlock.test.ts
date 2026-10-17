@@ -14,7 +14,7 @@ const fixture = rawFixture as {
   positive: { name: string; nowMs: number; synthetic: { sourcePrivateKey: string; recipientPrivateKey: string; masterKey: string }; transcript: string; salt: string; envelope: SharedUnlockEnvelope }[]
   negative: { name: string; mutation?: string; field?: string }[]
 }
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 const bytes = fromBase64Url
 const rejection = 'Shared unlock operation rejected'
 for (const vector of fixture.positive) {
@@ -161,6 +161,26 @@ for (const vector of fixture.positive) {
 describe('public offers before Identity authorization', () => {
   const expected = fixture.positive[0].envelope.context
   const clock = () => expected.issuedAtMs
+  it('requires exact independent HTTP opt-in and transfers without SubtleCrypto', async () => {
+    await loadSodium()
+    vi.stubGlobal('crypto', { getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto) })
+    const context = { ...expected, webOrigin: 'http://panel.example.test:8080' }
+    const denied = await createSharedUnlockOffer({ role: 'source', assertCurrent: () => {}, now: clock })
+    expect(() => denied.bind(context)).toThrow(rejection)
+    const wrongPort = await createSharedUnlockOffer({ role: 'source', assertCurrent: () => {}, now: clock,
+      transportPolicy: { allowHttpOrigins: ['http://panel.example.test'] } })
+    expect(() => wrongPort.bind(context)).toThrow(rejection)
+    const approved = ['http://panel.example.test:8080']
+    const transportPolicy = { allowHttpOrigins: approved }
+    const sourceOffer = await createSharedUnlockOffer({ role: 'source', assertCurrent: () => {}, now: clock, transportPolicy })
+    const recipientOffer = await createSharedUnlockOffer({ role: 'recipient', assertCurrent: () => {}, now: clock, transportPolicy })
+    expect(bytes(await hashSharedUnlockTranscript(context, sourceOffer.publicKey, recipientOffer.publicKey, transportPolicy))).toHaveLength(32)
+    approved[0] = 'http://attacker.example.test'
+    const source = sourceOffer.bind(context), recipient = recipientOffer.bind(context)
+    const masterKey = bytes(fixture.positive[0].synthetic.masterKey)
+    expect(await recipient.open(await source.seal(masterKey, recipient.publicKey), source.publicKey)).toEqual(masterKey)
+    masterKey.fill(0)
+  })
   it('creates both public keys first, then binds server-authorized context and transfers MK', async () => {
     const sourceOffer = await createSharedUnlockOffer({ role: 'source', assertCurrent: () => {}, now: clock })
     const recipientOffer = await createSharedUnlockOffer({ role: 'recipient', assertCurrent: () => {}, now: clock })

@@ -1,3 +1,4 @@
+import { deriveHkdfSha256, sha256Digest } from './portable-sha256'
 import { fromBase64Url, toBase64Url } from './encoding'
 import { loadSodium } from './sodium-loader'
 
@@ -146,13 +147,7 @@ async function hkdfSha256(ikm: Uint8Array, salt: Uint8Array, info: Uint8Array): 
   saltCopy.set(salt)
   infoCopy.set(info)
   try {
-    const key = await crypto.subtle.importKey('raw', ikmCopy.buffer, 'HKDF', false, ['deriveBits'])
-    const bits = await crypto.subtle.deriveBits(
-      { name: 'HKDF', hash: 'SHA-256', salt: saltCopy.buffer, info: infoCopy.buffer },
-      key,
-      112 * 8,
-    )
-    return new Uint8Array(bits)
+    return deriveHkdfSha256(ikmCopy, saltCopy, infoCopy, 112)
   } finally {
     ikmCopy.fill(0)
     saltCopy.fill(0)
@@ -164,7 +159,7 @@ async function sha256(value: Uint8Array): Promise<Uint8Array> {
   const copy = new Uint8Array(value.length)
   copy.set(value)
   try {
-    return new Uint8Array(await crypto.subtle.digest('SHA-256', copy.buffer))
+    return sha256Digest(copy)
   } finally {
     copy.fill(0)
   }

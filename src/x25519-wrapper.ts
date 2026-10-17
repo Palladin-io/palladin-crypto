@@ -1,3 +1,4 @@
+import { sha256Digest } from './portable-sha256'
 import { wipe } from './sodium'
 import { loadSodium } from './sodium-loader'
 import { fromBase64Url } from './encoding'
@@ -195,7 +196,7 @@ export async function computeVaultKeyFingerprint(
   const input = writer.finish()
   const copy = new Uint8Array(input.length)
   copy.set(input)
-  return new Uint8Array(await crypto.subtle.digest('SHA-256', copy.buffer))
+  return sha256Digest(copy)
 }
 
 /**
@@ -274,7 +275,7 @@ async function computeContextHash(context: X25519WrapperContext): Promise<Uint8A
   const input = new Uint8Array(CONTEXT_HASH_MAGIC.length + encoded.length)
   input.set(CONTEXT_HASH_MAGIC)
   input.set(encoded, CONTEXT_HASH_MAGIC.length)
-  return new Uint8Array(await crypto.subtle.digest('SHA-256', input.buffer))
+  return sha256Digest(input)
 }
 
 export async function sealKeyToX25519Recipient(

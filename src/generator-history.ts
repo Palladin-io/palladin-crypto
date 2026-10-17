@@ -1,3 +1,4 @@
+import { deriveHkdfSha256 } from './portable-sha256'
 import { fromBase64Url, toBase64Url } from './encoding'
 import { getCryptoProvider } from './provider/active-provider'
 import { decryptWithKey, encryptWithKey, wipe } from './sodium'
@@ -24,10 +25,7 @@ async function historyKey(privateKey: Uint8Array, expected: GeneratorHistoryCont
   const root = new Uint8Array(privateKey)
   const info = new TextEncoder().encode(JSON.stringify([PURPOSE, expected.accountId, expected.apiUrl]))
   try {
-    const key = await crypto.subtle.importKey('raw', root, 'HKDF', false, ['deriveBits'])
-    return new Uint8Array(await crypto.subtle.deriveBits(
-      { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info }, key, 256,
-    ))
+    return deriveHkdfSha256(root, new Uint8Array(32), info)
   } finally {
     wipe(root)
     wipe(info)

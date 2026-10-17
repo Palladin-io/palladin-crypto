@@ -194,3 +194,19 @@ export async function generateTotp(
     digest?.fill(0)
   }
 }
+
+export function formatOtpauthUri(value: Omit<TotpParams, 'issuer' | 'account'> & {
+  issuer?: string | null; account?: string | null
+}): string {
+  if ([value.issuer, value.account].some(part => part != null && part !== part.trim())) {
+    throw new Error('TOTP metadata cannot be represented without changes')
+  }
+  // A colon-bearing issuer belongs only in the query, not the label separator.
+  const issuerLabel = value.issuer?.includes(':') ? '' : (value.issuer ?? '')
+  const label = `${issuerLabel}:${value.account ?? ''}`
+  const query = new URLSearchParams({
+    secret: value.secret, algorithm: value.algorithm, digits: String(value.digits), period: String(value.period),
+  })
+  if (value.issuer) query.set('issuer', value.issuer)
+  return `otpauth://totp/${encodeURIComponent(label)}?${query.toString()}`
+}

@@ -1,0 +1,21 @@
+{
+  "provenance": "Python struct/uuid + native libsodium, independently generated on 2026-09-20; synthetic public test material only",
+  "scope": {
+    "shareId": "00112233-4455-4677-8899-aabbccddeeff",
+    "organizationId": "11112233-4455-4677-8899-aabbccddeeff",
+    "vaultId": "22222233-4455-4677-8899-aabbccddeeff",
+    "entryId": "33332233-4455-4677-8899-aabbccddeeff",
+    "sourceRevision": "9007199254740993",
+    "expiresAt": "2026-09-21T12:00:00.123456789Z"
+  },
+  "aadHex": "504c444e2d454e5452592d53484152452d763100112233445546778899aabbccddeeff11112233445546778899aabbccddeeff22222233445546778899aabbccddeeff33332233445546778899aabbccddeeff0020000000000001000000006ab11c40075bcd15",
+  "keyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "nonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+  "ciphertext": "5eB8HPi34M8RfgS+qj7EiS8uRouYuGmZBjdM3lzfkHcoN5TIYxNgELnwjGPtdTYRBZqBKyIQnndz8vJRrctmkdxUjcpc4BTgDmUEoikAbcc3dHX73ycRuzD5WBvVYlF2NX9XJXMySumGf1izVm8pNVFT4YuHKAgTpgM6DUurtYhwwA5v8ZUbu/HrQDx01d+v1DAQ8G+2FSPF3WMZ7IajhUSToDDafK+A8ltiYTLI/W2h2I3SPOMzTi2uLdOw339tM89FspIgKlj1jdIi",
+  "snapshot": {
+    "schema": "palladin.entry-share.v1",
+    "title": "Test credential",
+    "entryType": "credential",
+    "fields": [{ "id": "credential.password", "label": "Password", "type": "concealed", "value": "fixture-only" }]
+  }
+}
