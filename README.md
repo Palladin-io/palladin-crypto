@@ -32,6 +32,8 @@ protocol contracts remain authoritative for production behavior.
 - **Script execution package** — canonical Script metadata, typed parameters,
   direct/FULL authorization bindings and fail-closed whole-package verification
   layered over the existing authenticated Vault and grant envelopes.
+- **Account recovery challenge** — `openAccountRecoveryChallenge` opens the
+  Identity recovery challenge and returns the `recoveryProof` secret.
 
 Protocol 2 is additive in `0.2.x`. The legacy `0.1.x` operations keep their
 original byte format and remain available only for callers that have not yet
@@ -218,3 +220,29 @@ Discovery or Agent grant payloads. FULL Vault-key holders can still decrypt
 the complete MemberSecret. Coordinate the consumer rollout before writing CVV:
 older strict parsers reject the new field. Clients must consume the published
 registry release after review; local candidate tarballs are for verification only.
+
+### Account recovery challenge (0.14.0)
+
+Identity proves that a client can open the account's X25519 private key before
+it accepts a new recovery wrapping. `POST api/account/recovery/challenge` returns
+`sealedChallenge` (canonical base64url, 104 bytes):
+
+```
+crypto_box_seal("PLDNRCV1" || userId (16 B, RFC 4122 big-endian) || secret (32 B),
+                accountX25519PublicKey)
+```
+
+`openAccountRecoveryChallenge(sealedChallenge, userId, privateKey)` returns the
+32-byte secret; send it as `recoveryProof` with `toBase64Url` and `wipe` it.
+Pass the `userId` of the authenticated session, never a value from the challenge
+response. The function requires exactly 104 sealed bytes, a 56-byte plaintext,
+the `PLDNRCV1` magic and the caller's userId, so a server cannot use it to open
+another sealed package addressed to the same key, such as a Vault-key wrapper.
+Every failure throws `AccountRecoveryChallengeError` without partial data, and
+the opened plaintext is wiped. Existing operations are unchanged.
+
+Synthetic vectors for other implementations live in
+`src/fixtures/account-recovery-challenge-v1/vectors.json` (test-only, excluded
+from the package). `node scripts/generate-account-recovery-challenge-vectors.mjs`
+regenerates them with libsodium directly; sealed boxes use a fresh ephemeral key,
+so regeneration changes the sealed bytes while keys, userId and secret stay fixed.
