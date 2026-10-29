@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { canonicalSignInDiscovery, projectSignInDiscovery, SIGN_IN_FIELD_TYPE, signInAllowedAccess } from './sign-in-method'
 import { scriptExecutionMetadataSchema } from './script-execution-metadata'
 import { generateTotp } from './totp'
 
@@ -341,7 +342,9 @@ function assertPolicy(secret: MemberSecretV1): void {
       ? customFields.find((candidate) => candidate.id === field)
       : undefined
     const allowed = custom
-      ? custom.type === 'totp'
+      ? custom.type === SIGN_IN_FIELD_TYPE
+        ? signInAllowedAccess(secret.entryType, custom)
+        : custom.type === 'totp'
         ? ['never', 'onGrantDerived']
         : custom.type === 'text' || custom.type === 'multiline' || custom.type === 'concealed'
           ? secret.entryType === 'script' || secret.entryType === 'creditCard'
@@ -493,6 +496,9 @@ export function projectAgentDiscovery(secret: MemberSecretV1): AgentDiscoveryV1 
       const value = fieldValue(secret, id)
       return typeof value === 'string' ? [{ id, value }] : []
     })
+  const signIn = projectSignInDiscovery(secret.entryType, secret.content.customFields, secret.agentFieldAccess)
+  if (signIn) fields.push({ id: signIn.id, value: canonicalSignInDiscovery(signIn.value) })
+  fields.sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
   return agentDiscoverySchema.parse({
     schema: 'palladin.agent-discovery.v1', entryType: secret.entryType, agentLabel: secret.agentLabel,
     capabilities: secret.entryType === 'script'

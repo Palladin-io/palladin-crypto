@@ -75,6 +75,7 @@ export * from './browser-session-envelope'
 export * from './grant-protocol'
 export * from './credential-policy'
 export * from './credential-discovery'
+export * from './sign-in-method'
 export * from './canonical-grant-payload'
 export * as currentVaultPlaintext from './current-vault-plaintext'
 
