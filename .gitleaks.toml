@@ -61,3 +61,11 @@ regexes = [
   '''^MY======$''',
   '''^gezdgnbvgy3tqojqgezdgnbvgy3tqojq$'''
 ]
+
+[[allowlists]]
+description = "Exact synthetic challenge secret (bytes 0x01..0x20) in the account recovery challenge v1 fixture"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^src/fixtures/account-recovery-challenge-v1/vectors\.json$''']
+regexes = ['''"secret": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"''']

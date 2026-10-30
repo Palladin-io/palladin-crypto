@@ -1,0 +1,49 @@
+{
+  "contract": "palladin.account-recovery-challenge.v1",
+  "warning": "Generated synthetic test material. Never use in production.",
+  "generator": "scripts/generate-account-recovery-challenge-vectors.mjs",
+  "layout": "crypto_box_seal(\"PLDNRCV1\" || userId (16 B, RFC 4122 big-endian) || secret (32 B), accountX25519PublicKey)",
+  "recipientPrivateKey": "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU",
+  "recipientPublicKey": "OKtmS9hvd9fma92a4HkpE6lP2LM6EmACfktGwfSITGc",
+  "userId": "0b9e1b6c-5f3a-4d2e-9c41-7a8b6d5e4f30",
+  "secret": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA",
+  "plaintextHex": "504c444e524356310b9e1b6c5f3a4d2e9c417a8b6d5e4f300102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+  "valid": {
+    "sealedChallenge": "QiTldXtUxUcUs0-pqW1oH_WJtCwSwUSmhByBl_2aPSwEKtriVWJJSnpfe63scJ9WzDRDBfWA84yDGFyPgEHYTVAXCgH9X-XDnmSo1L2XHtSqLjUpt2VEM1wdIyf_jh8oW9fLKu0WBw0",
+    "recoveryProof": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"
+  },
+  "negative": [
+    {
+      "name": "wrong-magic",
+      "sealedChallenge": "SasEWt4Qrc_6Rrfr-riEcPUN6g-Ox6TaF9EjlKywfE3Zwmy-xrnIzZ_2YAUO5JcnYmbPNxx39MJXei0HKl0sRx4lTeuZX_VxlzKBU96UsZRg8GdQ7HRyYhvZ1A12JPnGkkpZBu7VRZo"
+    },
+    {
+      "name": "other-user-id",
+      "sealedChallenge": "QxVN6EiCIn4h3HdVqOfgtpPCkRu2V7PxcdeiIafxKXk3ZJv0C1fscktL-6ZM3Mb1N51zdO4-g2Z9UBS33WdjwJF3OtUXjRr5DBpTeoeHgZ0CiT5vddZFjG8FJbZeSrkx-_TDA3-WLLg"
+    },
+    {
+      "name": "truncated-plaintext",
+      "sealedChallenge": "1aB_x5_XWbzxfSry6fzo42PVuz8wTv_HLp9J-dhwcg1_dIhktGKvKdQ_BnGMPjLgm3Jh-_tbWc1iM6LUHdEK4lgVhzvncwXUktqxHStFNE7o2Wk4HBI-6uMhJhLdMXqYRa5gm50j1g"
+    },
+    {
+      "name": "oversized-plaintext",
+      "sealedChallenge": "-JkWN8JSEamcCqBJpk_z_yRmRhtb3d7i3gA2tlJk3WqMPOBx0VlxbiOkfPj1D9HrH2ge34ml6aX70YoBtE9mS-IbgliaV1TpPH9yJiLqEs3B4G582QX8oP8YZIZQLL84yar11KVbh36U"
+    },
+    {
+      "name": "vault-key-wrapper-package",
+      "sealedChallenge": "37Vn4ojjbfbDsuscvaPlf44Jv2iQoTXun-p9UgdObXG5_31VsZS5qGcnJaRySuiQ-k1-poql_nacA2B9elXXvxIFYlS46qQ2nNjaB7h4CAprzYE6FYLvqBPrbXAkK1zXj-RS47rCcQS0E4dH8WEBw0Nf9s9R2eH8"
+    },
+    {
+      "name": "sealed-to-other-key",
+      "sealedChallenge": "K4G02xmBGiVVBeogGsIdMYgb8AW0QL-cJuGBypWXgU_8OymF-4238dD1QDdyoyhmp3rrxPu_BextXNom0dkDX89TpDS8ect3XGd7jv641cAZQYBY1WYL1hiRs8bPpY-uBKyJX7Gh7mo"
+    },
+    {
+      "name": "tampered-ciphertext",
+      "sealedChallenge": "yKvtRET5oHU2HO8Up54DSkkIxd8Ib-jm1TsoGz_I9mwXEt4MVZ5_4d067E7vQLP_jw-3KNtCF7_W4DnEwljOiszI14CSzF9aoVcWXQ5uZh9zXo72Vm74d8acjOVJw1k3Nh7ptbSc8so"
+    },
+    {
+      "name": "padded-base64url",
+      "sealedChallenge": "wPUa8bgtYqdvWVRcUbedP9-YPBRrJj4XbYfyfsIXtAYag-QKGnwF_w7sP9qg4F2jCdLWEps100w0PFlH04k2EJL39MWnEhdd1tnqKZiqhnsxUK2_VPgNNad04d6hqu0NDAuYmiQnZG4="
+    }
+  ]
+}
