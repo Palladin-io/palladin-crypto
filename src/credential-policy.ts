@@ -10,7 +10,9 @@ export function defaultCredentialAgentFieldAccess(
     'credential.url': 'onGrantValue', 'credential.password': 'onGrantValue', 'credential.totp': 'onGrantDerived',
   }
   for (const field of customFields) {
-    fields[field.id.startsWith('custom:') ? field.id : `custom:${field.id}`] = field.type === 'totp' ? 'onGrantDerived' : 'onGrantValue'
+    // Non-standard types (e.g. palladin.signin.v1) admit only `never` by default.
+    fields[field.id.startsWith('custom:') ? field.id : `custom:${field.id}`] = field.type === 'totp' ? 'onGrantDerived'
+      : field.type === 'text' || field.type === 'multiline' || field.type === 'concealed' ? 'onGrantValue' : 'never'
   }
   return fields
 }
