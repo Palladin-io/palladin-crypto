@@ -60,8 +60,7 @@ src/
   sodium.ts                # keypair + symmetric helpers (via provider)
   encoding.ts              # base64 <-> bytes
   entry-crypto.ts          # encrypt/decrypt entry payloads
-  vault-key.ts             # seal/unseal VK
-  grant-envelope.ts        # GRANULAR grant re-encryption
+  vault-key.ts             # protocol 1 VK unseal (read-only)
   password-generator.ts    # CSPRNG password generator
   passphrase-generator.ts  # CSPRNG Diceware-style passphrase generator
   totp.ts                  # RFC 6238 TOTP + otpauth parsing

@@ -19,9 +19,7 @@ protocol contracts remain authoritative for production behavior.
   Argon2id account root and domain-separates AuthCredential from the client-only
   master key with HKDF-SHA-256.
 - **Entry encryption** — `encryptEntry` / `decryptEntry` (XSalsa20-Poly1305).
-- **Vault-key sealing** — `sealVaultKey` / `unsealVaultKey` (X25519 sealed box).
-- **Grant envelopes** — `produceGrantEntryEnvelope` (per-grant DEK, sealed to the
-  agent's public key).
+- **Protocol 1 Vault key** — `unsealVaultKey` opens existing sealed-box VKs only.
 - **TOTP** — RFC 6238 (`generateTotp`, `parseOtpauthUri`, `totpParamsFromSecret`).
 - **Password generator** — CSPRNG with rejection sampling (`generatePassword`).
 - **Provider abstraction** — `CryptoProvider` with a live `LibsodiumProvider` and
@@ -278,7 +276,12 @@ openable. Breaking signatures:
   vaultKey)` opens the metadata with an already opened Vault key.
 - `openEncryptedReason` requires `expected.vaultAgentMessageKeySuiteId` from the
   verified VaultManifest, and `verifyEncryptedReasonSignature` takes the suite id.
-- `sealVaultKey` and `produceGrantEntryEnvelope` (protocol 1) are deprecated.
+- `sealVaultKey`, `produceGrantEntryEnvelope` and the X25519 `generateKeyPair`
+  are removed. New recipient keys come from `generateRecipientKeyPair`.
+- `toWireKeyWrapperDescriptor` / `fromWireKeyWrapperDescriptor` map between the
+  numeric descriptor and the backend JSON names (`purpose: "memberVaultKey"`,
+  `recipientKeyKind: "memberEncryption"`, …). Unknown names fail closed with
+  `unsupported-purpose` or `malformed-descriptor`.
 
 Byte contracts: palladin-protocol `contracts/key-wrapper/v1` and
 `contracts/identity-kdf/v2` + `v3`. Copies of the registry and vectors live in

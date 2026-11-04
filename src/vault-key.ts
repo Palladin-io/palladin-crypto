@@ -1,37 +1,5 @@
-import { fromBase64, toBase64 } from './encoding'
+import { fromBase64 } from './encoding'
 import { getCryptoProvider } from './provider/active-provider'
-
-/**
- * Generate a fresh 32-byte Vault Key and seal it for the user.
- *
- * The VK is the symmetric key that will encrypt every entry in the new
- * vault. To stay zero-knowledge we never send it to the server in the
- * clear: we derive the user's X25519 public key from their private key
- * (already in memory after unlock) and seal the VK to that pubkey using
- * an anonymous sealed box — only someone holding the matching private
- * key can ever unwrap it. The base64-encoded ciphertext is what the
- * backend stores.
- *
- * The raw VK and the derived public key are wiped from local memory
- * before this function returns; the only surviving artefact is the
- * base64 string that is safe to ship over the wire.
- *
- * @deprecated Protocol 1 writer protected only by X25519. New envelopes use
- * `sealKey` with the recipient's published key suite.
- */
-export async function sealVaultKey(privateKey: Uint8Array): Promise<string> {
-  const provider = getCryptoProvider()
-  await provider.ready()
-  const vk = provider.randomBytes(32)
-  const publicKey = provider.scalarMultBase(privateKey)
-  try {
-    const wrappedVK = provider.boxSeal(vk, publicKey)
-    return toBase64(wrappedVK)
-  } finally {
-    provider.wipe(vk)
-    provider.wipe(publicKey)
-  }
-}
 
 /**
  * Unseal a Vault Key the user previously sealed for themselves.

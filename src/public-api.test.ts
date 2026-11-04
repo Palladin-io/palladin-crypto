@@ -18,10 +18,12 @@ describe('public Protocol 2 API', () => {
   })
 
   it('exposes the key wrapper only through algorithm-neutral names', () => {
-    for (const name of ['sealKey', 'openKey', 'computeRecipientFingerprint', 'generateRecipientKeyPair', 'KEY_WRAPPER_PURPOSE']) {
+    for (const name of ['sealKey', 'openKey', 'computeRecipientFingerprint', 'generateRecipientKeyPair', 'KEY_WRAPPER_PURPOSE',
+      'toWireKeyWrapperDescriptor', 'fromWireKeyWrapperDescriptor']) {
       expect(publicApi).toHaveProperty(name)
     }
-    for (const name of ['sealKeyToX25519Recipient', 'openKeyFromX25519Recipient', 'encodeX25519WrapperContext', 'VAULT_KEY_KIND', 'WRAPPER_PURPOSE']) {
+    for (const name of ['sealKeyToX25519Recipient', 'openKeyFromX25519Recipient', 'encodeX25519WrapperContext', 'VAULT_KEY_KIND', 'WRAPPER_PURPOSE',
+      'sealVaultKey', 'produceGrantEntryEnvelope', 'generateKeyPair']) {
       expect(publicApi).not.toHaveProperty(name)
     }
   })

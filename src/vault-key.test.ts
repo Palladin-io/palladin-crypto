@@ -1,34 +1,33 @@
 import { describe, expect, it } from 'vitest'
-import { sealVaultKey, unsealVaultKey } from './vault-key'
+import { unsealVaultKey } from './vault-key'
 import { decryptEntry, encryptEntry } from './entry-crypto'
-import { generateKeyPair, wipe } from './sodium'
+import { toBase64 } from './encoding'
+import { getCryptoProvider } from './provider/active-provider'
+import { wipe } from './sodium'
 import { ENTRY_TYPE_KEY, type EntryPlaintext } from './payload-types'
 
-describe('vault-key seal → unseal', () => {
-  it('seals a fresh VK for a keypair and unseals a usable 32-byte key', async () => {
-    const { privateKey } = await generateKeyPair()
+async function sealedVaultKey() {
+  const provider = getCryptoProvider()
+  await provider.ready()
+  const owner = provider.boxKeypair()
+  const vk = provider.randomBytes(32)
+  return { owner, vk, wrappedVK: toBase64(provider.boxSeal(vk, owner.publicKey)) }
+}
 
-    const wrappedVK = await sealVaultKey(privateKey)
-    expect(typeof wrappedVK).toBe('string')
+describe('protocol 1 unsealVaultKey', () => {
+  it('unseals an existing sealed-box VK into a usable 32-byte key', async () => {
+    const { owner, vk: expected, wrappedVK } = await sealedVaultKey()
+    const vk = await unsealVaultKey(wrappedVK, owner.privateKey)
+    expect(vk).toEqual(expected)
 
-    const vk = await unsealVaultKey(wrappedVK, privateKey)
-    expect(vk).toHaveLength(32)
-
-    // The unsealed VK is a valid symmetric key: it must round-trip an entry.
     const plaintext: EntryPlaintext = { type: ENTRY_TYPE_KEY, value: 'top-secret' }
-    const content = await encryptEntry(plaintext, vk)
-    const recovered = await decryptEntry(content, vk)
-    expect(recovered).toEqual(plaintext)
-
-    wipe(vk)
+    expect(await decryptEntry(await encryptEntry(plaintext, vk), vk)).toEqual(plaintext)
+    wipe(vk); wipe(expected)
   })
 
   it('fails to unseal with the wrong private key', async () => {
-    const owner = await generateKeyPair()
-    const attacker = await generateKeyPair()
-
-    const wrappedVK = await sealVaultKey(owner.privateKey)
-
+    const { wrappedVK } = await sealedVaultKey()
+    const attacker = getCryptoProvider().boxKeypair()
     await expect(unsealVaultKey(wrappedVK, attacker.privateKey)).rejects.toBeDefined()
   })
 })

@@ -3,12 +3,6 @@ import type { KeyPair } from './provider/crypto-provider'
 
 export type { KeyPair }
 
-export async function generateKeyPair(): Promise<KeyPair> {
-  const provider = getCryptoProvider()
-  await provider.ready()
-  return provider.boxKeypair()
-}
-
 /**
  * Encrypt with XSalsa20-Poly1305 and prepend the nonce so callers only
  * need to store a single byte blob. The companion decrypt routine

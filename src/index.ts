@@ -24,7 +24,6 @@ export { loadSodium } from './sodium-loader'
 
 // --- Low-level symmetric/keypair helpers ---
 export {
-  generateKeyPair,
   encryptWithKey,
   decryptWithKey,
   randomBytes,
@@ -123,6 +122,8 @@ export {
   deriveRecipientPublicKey,
   sealingSuiteForRecipientKey,
 } from './key-wrapper/key-wrapper'
+export { fromWireKeyWrapperDescriptor, toWireKeyWrapperDescriptor } from './key-wrapper/wire'
+export type { WireKeyWrapperDescriptor, WireKeyWrapperPurpose, WireRecipientKeyKind } from './key-wrapper/wire'
 export type { KeyWrapperDescriptor, KeyWrapperRecipient, RecipientKeyPair } from './key-wrapper/key-wrapper'
 
 // --- Encoding ---
@@ -154,16 +155,8 @@ export * as currentVaultPlaintext from './current-vault-plaintext'
 // --- Entry encryption ---
 export { encryptEntry, decryptEntry } from './entry-crypto'
 
-// --- Vault key sealing ---
-export { sealVaultKey, unsealVaultKey } from './vault-key'
-
-// --- Grant envelopes ---
-export { produceGrantEntryEnvelope } from './grant-envelope'
-export type {
-  GrantEntryEnvelope,
-  SealedEntryContent,
-  ProduceGrantEntryEnvelopeParams,
-} from './grant-envelope'
+// --- Protocol 1 Vault key opening (read-only; new wraps use sealKey) ---
+export { unsealVaultKey } from './vault-key'
 
 // --- Password generator ---
 export {
