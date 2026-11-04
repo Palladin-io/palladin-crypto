@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { encodeCanonicalEnvelopeAad, encodeDeliveryBoundGrantAad, X25519_WRAPPER_SUITE_ID } from './canonical-aad'
+import { encodeCanonicalEnvelopeAad, encodeDeliveryBoundGrantAad } from './canonical-aad'
+import { KEY_WRAPPER_SUITE } from './key-wrapper/registry'
 import { VAULT_XCHACHA20_POLY1305_V1 } from './crypto-suite'
 import { ENVELOPE_PURPOSE, type EnvelopeDescriptor, type GrantAadExtension } from './envelope'
 
@@ -10,7 +11,7 @@ const descriptor: EnvelopeDescriptor = {
   agentId: 'fedcba98-7654-4321-8765-abcdefabcdef', resourceRevision: 7n, keyVersion: 3, memberKeyGeneration: 9,
 }
 const extension: GrantAadExtension & { deliveryPolicy: 0 | 1 | 2 } = {
-  entryRevision: 6n, wrapperSuiteId: X25519_WRAPPER_SUITE_ID, recipientKeyVersion: 4,
+  entryRevision: 6n, wrapperSuiteId: KEY_WRAPPER_SUITE.legacy, recipientKeyVersion: 4,
   recipientKeyFingerprint: new Uint8Array(32).fill(0x5a), methods: 3, deliveryPolicy: 0,
   fieldSetCommitment: new Uint8Array(32).fill(0xa5), expiresAt: { seconds: 1_700_000_000n, nanoseconds: 123_456_789 },
   remainingUses: 5,

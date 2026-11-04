@@ -65,7 +65,7 @@ export interface CryptoProvider {
   /** Derive the X25519 public key from a private key. */
   scalarMultBase(privateKey: Uint8Array): Uint8Array
 
-  deriveKey(password: string, salt: Uint8Array, params: Argon2Params): Promise<Uint8Array>
+  deriveKey(password: string | Uint8Array, salt: Uint8Array, params: Argon2Params): Promise<Uint8Array>
 
   /** Zero a sensitive buffer in a way resistant to dead-store elimination. */
   wipe(arr: Uint8Array): void

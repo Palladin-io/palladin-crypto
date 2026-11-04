@@ -16,4 +16,15 @@ describe('public Protocol 2 API', () => {
     expect(publicApi).not.toHaveProperty('deriveVaultProjectionKey')
     expect(publicApi).not.toHaveProperty('decodeBase64Url')
   })
+
+  it('exposes the key wrapper only through algorithm-neutral names', () => {
+    for (const name of ['sealKey', 'openKey', 'computeRecipientFingerprint', 'generateRecipientKeyPair', 'KEY_WRAPPER_PURPOSE',
+      'toWireKeyWrapperDescriptor', 'fromWireKeyWrapperDescriptor']) {
+      expect(publicApi).toHaveProperty(name)
+    }
+    for (const name of ['sealKeyToX25519Recipient', 'openKeyFromX25519Recipient', 'encodeX25519WrapperContext', 'VAULT_KEY_KIND', 'WRAPPER_PURPOSE',
+      'sealVaultKey', 'produceGrantEntryEnvelope', 'generateKeyPair']) {
+      expect(publicApi).not.toHaveProperty(name)
+    }
+  })
 })

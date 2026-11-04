@@ -10,13 +10,13 @@
       }
     ],
     "component": {
-      "bom-ref": "pkg:npm/%40palladin/crypto@0.15.0",
+      "bom-ref": "pkg:npm/%40palladin/crypto@0.16.0",
       "type": "library",
       "group": "@palladin",
       "name": "crypto",
-      "version": "0.15.0",
+      "version": "0.16.0",
       "description": "Candidate shared zero-knowledge crypto package for Palladin clients; consumer cutover is pending.",
-      "purl": "pkg:npm/%40palladin/crypto@0.15.0",
+      "purl": "pkg:npm/%40palladin/crypto@0.16.0",
       "licenses": [
         {
           "license": {
@@ -27,6 +27,60 @@
     }
   },
   "components": [
+    {
+      "bom-ref": "pkg:npm/%40noble/ciphers@2.4.0",
+      "type": "library",
+      "name": "@noble/ciphers",
+      "version": "2.4.0",
+      "purl": "pkg:npm/%40noble/ciphers@2.4.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "0278c59f426ff7695a024bccae0865159ab8a9008837fe03c4557f7a8a2ab42d984e307b90178b312d93f4a257e039fe6555cb3b02b495282a0edc7d82fc6d8b"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@noble/ciphers/-/ciphers-2.4.0.tgz"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/%40noble/curves@2.4.0",
+      "type": "library",
+      "name": "@noble/curves",
+      "version": "2.4.0",
+      "purl": "pkg:npm/%40noble/curves@2.4.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "3f8ffadb3ae07c7df70a7784dc39f85a1255036d98514d1e479d702886a7e0d551bf0b00d189cf4f0586a4d6e9b9a712ba399214bbf2ce9cae477d3e7dbab613"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@noble/curves/-/curves-2.4.0.tgz"
+        }
+      ]
+    },
     {
       "bom-ref": "pkg:npm/%40noble/hashes@2.2.0",
       "type": "library",
@@ -78,6 +132,33 @@
         {
           "type": "distribution",
           "url": "https://registry.npmjs.org/@noble/hashes/-/hashes-2.4.0.tgz"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/%40noble/post-quantum@0.7.1",
+      "type": "library",
+      "name": "@noble/post-quantum",
+      "version": "0.7.1",
+      "purl": "pkg:npm/%40noble/post-quantum@0.7.1",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f8ff7df35222027561fab99cb9ba33cd5c2b132dd7b0dfed3214e7bec8d5f550da6293a7342a96a8aa3614b5b16eef766077e3188944e579d6d7be542be967f9"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@noble/post-quantum/-/post-quantum-0.7.1.tgz"
         }
       ]
     },
@@ -246,13 +327,25 @@
   ],
   "dependencies": [
     {
-      "ref": "pkg:npm/%40palladin/crypto@0.15.0",
+      "ref": "pkg:npm/%40palladin/crypto@0.16.0",
       "dependsOn": [
+        "pkg:npm/%40noble/ciphers@2.4.0",
         "pkg:npm/%40noble/hashes@2.4.0",
+        "pkg:npm/%40noble/post-quantum@0.7.1",
         "pkg:npm/%40scure/bip39@2.2.0",
         "pkg:npm/hash-wasm@4.12.0",
         "pkg:npm/libsodium-wrappers@0.8.4",
         "pkg:npm/zod@4.4.3"
+      ]
+    },
+    {
+      "ref": "pkg:npm/%40noble/ciphers@2.4.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40noble/curves@2.4.0",
+      "dependsOn": [
+        "pkg:npm/%40noble/hashes@2.4.0"
       ]
     },
     {
@@ -262,6 +355,14 @@
     {
       "ref": "pkg:npm/%40noble/hashes@2.4.0",
       "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40noble/post-quantum@0.7.1",
+      "dependsOn": [
+        "pkg:npm/%40noble/ciphers@2.4.0",
+        "pkg:npm/%40noble/curves@2.4.0",
+        "pkg:npm/%40noble/hashes@2.4.0"
+      ]
     },
     {
       "ref": "pkg:npm/%40scure/base@2.2.0",

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { generateRecipientKeyPair } from './key-wrapper/key-wrapper'
+import { KEY_WRAPPER_SUITE } from './key-wrapper/registry'
 
 import {
   assertScriptExecutionPackage,
@@ -188,7 +190,7 @@ describe('Script execution package', () => {
   })
   it.each(['initial', 'refresh'])('current %s packages carry exact Discovery, Key URL and derived TOTP references', async (mode) => {
     const sodium = await loadSodium()
-    const recipient = sodium.crypto_box_keypair()
+    const recipient = await generateRecipientKeyPair()
     const signer = sodium.crypto_sign_keypair()
     const credential = { ...credentialReference, agentFieldAccess: { ...credentialReference.agentFieldAccess,
       'credential.username': 'discovery' as const, 'credential.totp': 'onGrantDerived' as const },
@@ -206,18 +208,18 @@ describe('Script execution package', () => {
     let opened: Awaited<ReturnType<typeof openScriptExecutionPackage>> | undefined
     try {
       const input = { manifest: value, grantId: directAuthorization.grantId, packageRevision: '1',
-        recipientAgentKeyVersion: 2, recipientAgentPublicKey: recipient.publicKey,
+        recipientAgentKeyVersion: 2, recipientAgentKey: recipient,
         vaultSigningKeyVersion: 5, vaultSigningPrivateKey: signer.privateKey, entries }
       await expect(sealScriptExecutionPackage(input)).rejects.toThrow()
       let sealed = await sealCanonicalScriptExecutionPackage(input)
       if (mode === 'refresh') {
         const next = { ...value, scriptRevision: '8' }
-        await expect(refreshScriptExecutionPackage(sealed, next, entries, recipient.publicKey, signer.privateKey)).rejects.toThrow()
-        sealed = await refreshCanonicalScriptExecutionPackage(sealed, next, entries, recipient.publicKey, signer.privateKey)
+        await expect(refreshScriptExecutionPackage(sealed, next, entries, recipient, signer.privateKey)).rejects.toThrow()
+        sealed = await refreshCanonicalScriptExecutionPackage(sealed, next, entries, recipient, signer.privateKey)
         expect(sealed.packageRevision).toBe('2')
         expect(sealed.grantId).toBe(input.grantId)
       }
-      opened = await openScriptExecutionPackage(sealed, recipient.privateKey, expectedContext(signer.publicKey, sealed, sealed.scriptRevision))
+      opened = await openScriptExecutionPackage(sealed, recipient, expectedContext(signer.publicKey, sealed, sealed.scriptRevision))
       const user = parseGrantPayload(opened.entries.find((entry) => entry.entryId === userEntryId)!.encodedGrantPayload)
       expect(user.fields).toEqual([{ id: 'credential.username', kind: 'text', mode: 'value', value: credential.content.username }])
       const password = parseGrantPayload(opened.entries.find((entry) => entry.entryId === passwordEntryId)!.encodedGrantPayload)
@@ -352,14 +354,14 @@ describe('Script execution package', () => {
 
   it('seals and opens one opaque direct package and increments only packageRevision on refresh', async () => {
     const sodium = await loadSodium()
-    const recipient = sodium.crypto_box_keypair()
+    const recipient = await generateRecipientKeyPair()
     const signer = sodium.crypto_sign_keypair()
     const sealed = await sealScriptExecutionPackage({
       manifest: manifest(),
       grantId: directAuthorization.grantId,
       packageRevision: '1',
       recipientAgentKeyVersion: 2,
-      recipientAgentPublicKey: recipient.publicKey,
+      recipientAgentKey: recipient,
       vaultSigningKeyVersion: 5,
       vaultSigningPrivateKey: signer.privateKey,
       entries: packageEntries(),
@@ -373,7 +375,7 @@ describe('Script execution package', () => {
 
     const opened = await openScriptExecutionPackage(
       sealed,
-      recipient.privateKey,
+      recipient,
       expectedContext(signer.publicKey, sealed),
     )
     expect(opened.manifest).toEqual(manifest())
@@ -393,29 +395,51 @@ describe('Script execution package', () => {
       sealed,
       nextManifest,
       packageEntries(),
-      recipient.publicKey,
+      recipient,
       signer.privateKey,
     )
     expect(refreshed.grantId).toBe(sealed.grantId)
     expect(refreshed.packageRevision).toBe('2')
     expect((await openScriptExecutionPackage(
       refreshed,
-      recipient.privateKey,
+      recipient,
       expectedContext(signer.publicKey, refreshed, '8'),
     )).manifest).toEqual(nextManifest)
   })
 
+  it('wraps the package DEK with the Agent key suite and signs the suite id', async () => {
+    const sodium = await loadSodium()
+    const recipient = await generateRecipientKeyPair()
+    const signer = sodium.crypto_sign_keypair()
+    const input = {
+      manifest: manifest(), grantId: directAuthorization.grantId, packageRevision: '1',
+      recipientAgentKeyVersion: 1, recipientAgentKey: recipient,
+      vaultSigningKeyVersion: 5, vaultSigningPrivateKey: signer.privateKey, entries: packageEntries(),
+    }
+    const legacyAgent = sodium.crypto_box_keypair()
+    await expect(sealScriptExecutionPackage({
+      ...input, recipientAgentKey: { keySuiteId: KEY_WRAPPER_SUITE.legacy, publicKey: legacyAgent.publicKey },
+    })).rejects.toThrow('key-migration-pending')
+
+    const sealed = await sealScriptExecutionPackage(input)
+    expect(sealed.wrapperSuiteId).toBe(KEY_WRAPPER_SUITE.active)
+    await expect(openScriptExecutionPackage({ ...sealed, wrapperSuiteId: KEY_WRAPPER_SUITE.legacy }, recipient, {
+      ...expectedContext(signer.publicKey, sealed), recipientAgentKeyVersion: 1,
+    })).rejects.toThrow(/signature is invalid/)
+    wipe(recipient.privateKey); wipe(signer.privateKey); wipe(legacyAgent.privateKey)
+  })
+
   it('rejects an incomplete package, a substituted recipient and ciphertext tampering', async () => {
     const sodium = await loadSodium()
-    const recipient = sodium.crypto_box_keypair()
-    const attacker = sodium.crypto_box_keypair()
+    const recipient = await generateRecipientKeyPair()
+    const attacker = await generateRecipientKeyPair()
     const signer = sodium.crypto_sign_keypair()
     await expect(sealScriptExecutionPackage({
       manifest: manifest(),
       grantId: directAuthorization.grantId,
       packageRevision: '1',
       recipientAgentKeyVersion: 1,
-      recipientAgentPublicKey: recipient.publicKey,
+      recipientAgentKey: recipient,
       vaultSigningKeyVersion: 5,
       vaultSigningPrivateKey: signer.privateKey,
       entries: packageEntries().slice(0, -1),
@@ -426,16 +450,16 @@ describe('Script execution package', () => {
       grantId: directAuthorization.grantId,
       packageRevision: '1',
       recipientAgentKeyVersion: 1,
-      recipientAgentPublicKey: recipient.publicKey,
+      recipientAgentKey: recipient,
       vaultSigningKeyVersion: 5,
       vaultSigningPrivateKey: signer.privateKey,
       entries: packageEntries(),
     })
-    await expect(openScriptExecutionPackage(sealed, attacker.privateKey, {
+    await expect(openScriptExecutionPackage(sealed, attacker, {
       ...expectedContext(signer.publicKey, sealed),
       recipientAgentKeyVersion: 1,
     })).rejects.toThrow(/recipient/)
-    await expect(openScriptExecutionPackage(sealed, recipient.privateKey, {
+    await expect(openScriptExecutionPackage(sealed, recipient, {
       ...expectedContext(signer.publicKey, sealed),
       recipientAgentKeyVersion: 1,
       scriptRevision: '8',
@@ -445,11 +469,11 @@ describe('Script execution package', () => {
       ...sealed,
       encodedPackageCiphertext: `${sealed.encodedPackageCiphertext.slice(0, -1)}${last === 'A' ? 'B' : 'A'}`,
     }
-    await expect(openScriptExecutionPackage(tampered, recipient.privateKey, {
+    await expect(openScriptExecutionPackage(tampered, recipient, {
       ...expectedContext(signer.publicKey, sealed),
       recipientAgentKeyVersion: 1,
     })).rejects.toBeDefined()
-    await expect(openScriptExecutionPackage(sealed, recipient.privateKey, {
+    await expect(openScriptExecutionPackage(sealed, recipient, {
       ...expectedContext(signer.publicKey, sealed),
       packageRevision: '2',
       recipientAgentKeyVersion: 1,
@@ -459,7 +483,7 @@ describe('Script execution package', () => {
       ...sealed,
       producerSignature: `${signatureFirst === 'A' ? 'B' : 'A'}${sealed.producerSignature.slice(1)}`,
     }
-    await expect(openScriptExecutionPackage(forged, recipient.privateKey, {
+    await expect(openScriptExecutionPackage(forged, recipient, {
       ...expectedContext(signer.publicKey, sealed),
       recipientAgentKeyVersion: 1,
     })).rejects.toThrow(/producer signature/)
@@ -468,7 +492,7 @@ describe('Script execution package', () => {
       ...sealed,
       encodedPackageCiphertext: 'A'.repeat(Math.ceil(2_097_152 * 4 / 3) + 1),
     }
-    await expect(openScriptExecutionPackage(oversized, recipient.privateKey, {
+    await expect(openScriptExecutionPackage(oversized, recipient, {
       ...expectedContext(signer.publicKey, sealed),
       recipientAgentKeyVersion: 1,
     })).rejects.toThrow(/producer authentication/)

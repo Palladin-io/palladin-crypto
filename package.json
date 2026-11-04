@@ -1,6 +1,6 @@
 {
   "name": "@palladin/crypto",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "Candidate shared zero-knowledge crypto package for Palladin clients; consumer cutover is pending.",
   "license": "Apache-2.0",
   "author": "Patryk Roguszewski <patryk.roguszewski@palladin.io>",
@@ -45,7 +45,9 @@
     "prepublishOnly": "npm run typecheck && npm run build && npm test && npm run oss:check && npm run package:check"
   },
   "dependencies": {
+    "@noble/ciphers": "2.4.0",
     "@noble/hashes": "2.4.0",
+    "@noble/post-quantum": "0.7.1",
     "@scure/bip39": "^2.2.0",
     "hash-wasm": "^4.12.0",
     "libsodium-wrappers": "^0.8.2",
@@ -53,6 +55,7 @@
   },
   "devDependencies": {
     "@types/libsodium-wrappers": "^0.8.2",
+    "fake-indexeddb": "6.2.6",
     "tsup": "^8.5.0",
     "typescript": "~5.9.3",
     "vitest": "^4.1.9"

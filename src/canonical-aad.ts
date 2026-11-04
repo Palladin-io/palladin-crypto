@@ -1,4 +1,5 @@
 import { sha256Digest } from './portable-sha256'
+import { isKeyWrapperSuiteId } from './key-wrapper/registry'
 import {
   ENVELOPE_PURPOSE,
   type CanonicalEnvelopeAad,
@@ -14,7 +15,6 @@ import {
 const ENVELOPE_MAGIC = new TextEncoder().encode('PLDNENV2')
 const KDF_MAGIC = new TextEncoder().encode('PLDNKDF2')
 const FIELD_SET_MAGIC = new TextEncoder().encode('PLDNV2FS')
-export const X25519_WRAPPER_SUITE_ID = 'palladin-x25519-sealed-box-v1'
 const ASCII = /^[\x20-\x7e]+$/
 const FIELD_ID = /^[A-Za-z0-9._:-]{1,128}$/
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -182,7 +182,7 @@ function writeExtension(
     case ENVELOPE_PURPOSE.reason: {
       const value = extension as ReasonAadExtension | undefined
       if (!value || !('recipientKeyFingerprint' in value)) throw new TypeError('Reason extension is required')
-      if (value.wrapperSuiteId !== X25519_WRAPPER_SUITE_ID) throw new TypeError('Unsupported recipient wrapper suite')
+      if (!isKeyWrapperSuiteId(value.wrapperSuiteId)) throw new TypeError('Unsupported recipient wrapper suite')
       writeAscii(writer, value.wrapperSuiteId, 'Wrapper suite id')
       writer.u32(value.recipientKeyVersion)
       writer.bytes(exactBytes(value.recipientKeyFingerprint, 32, 'Recipient key fingerprint'))
@@ -193,7 +193,7 @@ function writeExtension(
       const value = extension as GrantAadExtension | undefined
       if (!value || !('fieldSetCommitment' in value)) throw new TypeError('Grant extension is required')
       writer.u64(value.entryRevision)
-      if (value.wrapperSuiteId !== X25519_WRAPPER_SUITE_ID) throw new TypeError('Unsupported recipient wrapper suite')
+      if (!isKeyWrapperSuiteId(value.wrapperSuiteId)) throw new TypeError('Unsupported recipient wrapper suite')
       writeAscii(writer, value.wrapperSuiteId, 'Wrapper suite id')
       writer.u32(value.recipientKeyVersion)
       writer.bytes(exactBytes(value.recipientKeyFingerprint, 32, 'Recipient key fingerprint'))

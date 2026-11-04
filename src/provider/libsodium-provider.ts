@@ -66,7 +66,7 @@ export class LibsodiumProvider implements CryptoProvider {
     return this.s.crypto_scalarmult_base(privateKey)
   }
 
-  async deriveKey(password: string, salt: Uint8Array, params: Argon2Params): Promise<Uint8Array> {
+  async deriveKey(password: string | Uint8Array, salt: Uint8Array, params: Argon2Params): Promise<Uint8Array> {
     return argon2id({
       password,
       salt,
@@ -84,6 +84,11 @@ export class LibsodiumProvider implements CryptoProvider {
    * `memzero` is resistant to compiler dead-store elimination.
    */
   wipe(arr: Uint8Array): void {
-    sodium.memzero(arr)
+    try {
+      sodium.memzero(arr)
+    } catch {
+      // memzero rejects Uint8Arrays from another realm (e.g. jsdom's TextEncoder); zero them anyway.
+      arr.fill(0)
+    }
   }
 }

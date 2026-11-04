@@ -19,9 +19,7 @@ protocol contracts remain authoritative for production behavior.
   Argon2id account root and domain-separates AuthCredential from the client-only
   master key with HKDF-SHA-256.
 - **Entry encryption** — `encryptEntry` / `decryptEntry` (XSalsa20-Poly1305).
-- **Vault-key sealing** — `sealVaultKey` / `unsealVaultKey` (X25519 sealed box).
-- **Grant envelopes** — `produceGrantEntryEnvelope` (per-grant DEK, sealed to the
-  agent's public key).
+- **Protocol 1 Vault key** — `unsealVaultKey` opens existing sealed-box VKs only.
 - **TOTP** — RFC 6238 (`generateTotp`, `parseOtpauthUri`, `totpParamsFromSecret`).
 - **Password generator** — CSPRNG with rejection sampling (`generatePassword`).
 - **Provider abstraction** — `CryptoProvider` with a live `LibsodiumProvider` and
@@ -32,8 +30,13 @@ protocol contracts remain authoritative for production behavior.
 - **Script execution package** — canonical Script metadata, typed parameters,
   direct/FULL authorization bindings and fail-closed whole-package verification
   layered over the existing authenticated Vault and grant envelopes.
-- **Account recovery challenge** — `openAccountRecoveryChallenge` opens the
-  Identity recovery challenge and returns the `recoveryProof` secret.
+- **Account recovery challenge** — `openAccountRecoveryChallenge` (v1) and
+  `openAccountRecoveryChallengeV2` (X-Wing) return the `recoveryProof` secret.
+- **Key wrapper** — algorithm-neutral `sealKey` / `openKey` over the
+  key-wrapper v1 suite registry (`palladin-xwing-v1` active,
+  `palladin-x25519-sealed-box-v1` read-only).
+- **Secret Key** — Identity KDF v2 with the Account Secret, PSK2 display,
+  Emergency Kit QR, device pairing and the browser device wrapper.
 
 Protocol 2 is additive in `0.2.x`. The legacy `0.1.x` operations keep their
 original byte format and remain available only for callers that have not yet
@@ -246,3 +249,83 @@ Synthetic vectors for other implementations live in
 from the package). `node scripts/generate-account-recovery-challenge-vectors.mjs`
 regenerates them with libsodium directly; sealed boxes use a fresh ephemeral key,
 so regeneration changes the sealed bytes while keys, userId and secret stay fixed.
+
+### Post-quantum key wrapper and Secret Key (0.16.0)
+
+Breaking: the X25519-named wrapper exports (`sealKeyToX25519Recipient`,
+`openKeyFromX25519Recipient`, `encodeX25519WrapperContext`,
+`computeVaultKeyFingerprint`, `wrapperContextFromMemberVaultKey`,
+`VAULT_KEY_KIND`, `WRAPPER_PURPOSE`, `X25519_SEALED_BOX_V1`) are no longer
+public. No consumer imported them. The provider's `deriveKey` also accepts bytes.
+
+New Grant, Script execution and reason envelopes use the suite of the
+recipient's published key (`recipient-key-publication.json`); nothing new is
+sealed with `palladin-x25519-sealed-box-v1`, and envelopes written with it stay
+openable. Breaking signatures:
+
+- `buildCanonicalGrantEnvelope(V2)` requires `agentKeySuiteId` from the Agent
+  key directory; the wrapper descriptor and the Grant binding carry it as
+  `wrapperSuiteId`. A read-only Agent key fails with `key-migration-pending`.
+- Script execution packages carry a signed `wrapperSuiteId` (absent only on
+  packages written before this release). `sealScriptExecutionPackage` and the
+  refresh helpers take `recipientAgentKey: { keySuiteId, publicKey }`;
+  `openScriptExecutionPackage` takes `{ keySuiteId, privateKey }`.
+- `openMemberVaultKey` and `openVaultProjection` take the member's own
+  `KeyWrapperRecipient` (`keySuiteId`, `keyKind` 5, `keyVersion`, `publicKey`,
+  `privateKey`) and open every readable suite. `openMemberVaultMetadata(vault,
+  vaultKey)` opens the metadata with an already opened Vault key.
+- `openEncryptedReason` requires `expected.vaultAgentMessageKeySuiteId` from the
+  verified VaultManifest, and `verifyEncryptedReasonSignature` takes the suite id.
+- `sealVaultKey`, `produceGrantEntryEnvelope` and the X25519 `generateKeyPair`
+  are removed. New recipient keys come from `generateRecipientKeyPair`.
+- `toWireKeyWrapperDescriptor` / `fromWireKeyWrapperDescriptor` map between the
+  numeric descriptor and the backend JSON names (`purpose: "memberVaultKey"`,
+  `recipientKeyKind: "memberEncryption"`, …). Unknown names fail closed with
+  `unsupported-purpose` or `malformed-descriptor`.
+
+Byte contracts: palladin-protocol `contracts/key-wrapper/v1` and
+`contracts/identity-kdf/v2` + `v3`. Copies of the registry and vectors live in
+`src/fixtures/` (test-only, excluded from the package).
+
+**Key wrapper.** `sealKey(descriptor, key, recipient)` returns the base64url
+package; `openKey(descriptor, package, recipient)` returns the 32-byte key.
+Build `descriptor` from authenticated Vault/Member/Agent state, never from the
+envelope, and take `recipient.keySuiteId`, `keyKind`, `keyVersion` and
+`publicKey` from the authenticated key publication (key directory or signed
+manifest). Senders pick `descriptor.wrapperSuiteId` with
+`sealingSuiteForRecipientKey(keySuiteId)`; a published key whose suite is not
+active fails with `key-migration-pending`. A publication suite that differs from
+`descriptor.wrapperSuiteId` fails as `recipient-mismatch`. Only
+the `active` suite seals; `read-only` suites only open; unknown or retired
+suites, purposes and descriptor fields fail closed. Failures throw
+`KeyWrapperError` with a registry `code`. `KEY_WRAPPER_PURPOSE` and
+`RECIPIENT_KEY_KIND` keys are the neutral backend JSON enum names (for example
+`memberVaultKey`, `memberEncryption`) mapped to their numeric context values. `generateRecipientKeyPair` creates an
+active-suite key pair (32-byte seed); `computeRecipientFingerprint` computes the
+suite-specific `recipientFingerprint`.
+
+**X-Wing.** `@noble/post-quantum` `ml_kem768_x25519` checked against the
+draft-connolly-cfrg-xwing-kem-10 known-answer vector; XChaCha20-Poly1305 and
+HKDF-SHA-256 per `palladin-xwing-v1`. Public key 1216 bytes, package 1168 bytes;
+lengths are checked before the KEM.
+
+**Secret Key.** `deriveIdentityV2(password, accountSecret, accountId, salt)`
+implements `identity-argon2id-account-secret-v2`; `identityKdfProfileVersion`
+accepts only the password-only v1 profile (for migration) and the v2 profile.
+`formatSecretKey` / `parseSecretKey` handle the account-bound PSK2 text and
+`encodeEmergencyKitQr` / `parseEmergencyKitQr` the kit QR. Errors throw
+`SecretKeyError`.
+
+**Device pairing.** `generatePairingKeyPair`, `encodePairingQr` /
+`parsePairingQr`, `computePairingSas`, `sealAccountSecretForPairing` (sender,
+after the user confirms the SAS; in `recipient-shows-qr` the scanned key digest
+must match the relayed key) and `openPairingEnvelope` (recipient). Errors throw
+`PairingError`.
+
+**Browser device wrapper.** `storeAccountSecretOnDevice`,
+`loadAccountSecretFromDevice` and `deleteAccountSecretFromDevice` keep the
+Account Secret in IndexedDB `palladin-device`/`account-secrets` as AES-256-GCM
+ciphertext under a non-extractable key. Call `deleteAccountSecretFromDevice` on
+sign-out, forget-this-device, account recovery and account deletion. Same-origin script or malware in the
+browser profile can still use the key; the wrapper keeps the raw secret out of
+storage dumps and off the backend.

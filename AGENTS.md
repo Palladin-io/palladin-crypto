@@ -23,7 +23,12 @@ MCP-agent clients can decrypt it.
   passwords, mnemonics, or generated codes. This repo is public.
 - **No remote code.** `libsodium-wrappers` and `hash-wasm` embed their WASM as
   in-JS base64 and are kept as external runtime deps so the consumer bundles
-  them — required by the extension's MV3 CSP (no remote script).
+  them — required by the extension's MV3 CSP (no remote script). The `@noble/*`
+  dependencies are pure JavaScript and are bundled the same way.
+- **Key wrapper suites come from the registry.** Product code uses
+  `sealKey`/`openKey` with a `wrapperSuiteId`; algorithm code lives only in
+  `src/key-wrapper/suites/`. A new suite needs a palladin-protocol registry
+  entry and vectors first. Only an `active` suite seals.
 
 ## Provider abstraction
 
@@ -48,11 +53,14 @@ src/
   sodium-loader.ts         # lazy libsodium WASM init
   argon2.ts                # KDF params + deriveKey
   identity-kdf.ts          # Frozen Identity password KDF v1 + profile guard
+  identity-account-secret.ts # Identity KDF v2 (Account Secret), Secret Key, Emergency Kit QR
+  device-pairing.ts        # Secret Key transfer between devices (X-Wing)
+  browser-device-wrapper.ts # Account Secret under a non-extractable WebCrypto key
+  key-wrapper/             # Algorithm-neutral key wrapper: registry, API, suites/
   sodium.ts                # keypair + symmetric helpers (via provider)
   encoding.ts              # base64 <-> bytes
   entry-crypto.ts          # encrypt/decrypt entry payloads
-  vault-key.ts             # seal/unseal VK
-  grant-envelope.ts        # GRANULAR grant re-encryption
+  vault-key.ts             # protocol 1 VK unseal (read-only)
   password-generator.ts    # CSPRNG password generator
   passphrase-generator.ts  # CSPRNG Diceware-style passphrase generator
   totp.ts                  # RFC 6238 TOTP + otpauth parsing
