@@ -115,13 +115,9 @@ describe(`shared Rust vector: ${wrapperVector.name}`, () => {
     )).rejects.toThrow(/context verification/)
   })
 
-  it('wipes an opened package when context encoding fails after unwrap', async () => {
+  it('rejects an invalid context before unwrapping anything', async () => {
     const provider = getCryptoProvider()
-    let openedPackage: Uint8Array | undefined
-    const wipe = vi.spyOn(provider, 'wipe').mockImplementation((value) => {
-      if (value.length === 72) openedPackage = new Uint8Array(value)
-      value.fill(0)
-    })
+    const wipe = vi.spyOn(provider, 'wipe')
     try {
       await expect(openKeyFromX25519Recipient(
         bytes(wrapperVector.sealedPackageHex),
@@ -129,8 +125,7 @@ describe(`shared Rust vector: ${wrapperVector.name}`, () => {
         bytes(wrapperVector.recipientPrivateKeyHex),
         { ...context, wrappedKeyVersion: 0 },
       )).rejects.toThrow(/versions must be positive/)
-      expect(openedPackage).toBeDefined()
-      expect(hex(openedPackage!.slice(8, 40))).toBe(wrapperVector.wrappedKeyHex)
+      expect(wipe.mock.calls.some(([value]) => value.length === 72)).toBe(false)
     } finally {
       wipe.mockRestore()
     }

@@ -1,0 +1,161 @@
+{
+  "contract": "palladin-identity-kdf",
+  "schemaVersion": 1,
+  "addendumVersion": 3,
+  "securityVersion": 2,
+  "status": "accepted-implementation-pending",
+  "summary": "Addendum to v2. The Account Secret derivation of identity-argon2id-account-secret-v2 is unchanged and keeps the v2 vectors. v3 replaces the X25519 device pairing with X-Wing, adds the browser device wrapper, the Secret Key display and Emergency Kit encodings, the X-Wing account recovery challenge and the in-place migration from the production password-only profile.",
+  "supersedes": {
+    "v2.devicePairing": "devicePairing (protocolVersion 2); protocolVersion 1 is not implemented and is rejected",
+    "v2.migration.sourceProfile": "migration.sourceProfile",
+    "v2.deviceAssistance": "deviceAssistance (adds browserNonExtractableWrapper)"
+  },
+  "productName": {
+    "accountSecret": "Secret Key",
+    "note": "User-facing text calls the v2 AccountSecret the Secret Key."
+  },
+  "accountKeys": {
+    "memberEncryptionKeySuite": "palladin-xwing-v1",
+    "memberPrivateKeyBytes": 32,
+    "memberPublicKeyBytes": 1216,
+    "rule": "Accounts at security version 2 hold an X-Wing member key registered with suite palladin-xwing-v1 in the authenticated member key directory; the private seed is wrapped only under the v2 MasterKey and the recovery key."
+  },
+  "secretKeyDisplay": {
+    "prefix": "PSK2",
+    "alphabet": "Crockford base32 0123456789ABCDEFGHJKMNPQRSTVWXYZ",
+    "body": "Crockford-base32(AccountSecret[32]) as 52 characters, most significant bit first, final 4 bits zero-padded",
+    "checksum": "2 Crockford-base32 characters encoding the first 10 bits of SHA-256(ASCII(PLDNSK2CHK) || accountId[16] || AccountSecret[32])",
+    "format": "PSK2- followed by the 54 characters (body || checksum) in nine groups of six joined by '-'",
+    "parse": "Uppercase; remove spaces and '-'; map O to 0 and I, L to 1; require the PSK2 prefix, 54 symbols, zero padding bits and a matching checksum for the account being unlocked; otherwise reject without deriving.",
+    "errors": ["secret-key-malformed", "secret-key-checksum-mismatch"]
+  },
+  "emergencyKit": {
+    "format": "PDF generated on the client; never uploaded, logged or cached outside the user's explicit save or share action",
+    "contents": ["account e-mail address", "Secret Key display string", "Secret Key QR code", "empty field for the master password", "sign-in address", "date generated"],
+    "mustNotContain": ["recovery phrase", "master password", "any key other than the Secret Key"],
+    "qrPayload": "palladin-kit:v1: || base64url(accountId[16]) || . || base64url(AccountSecret[32])",
+    "qrParse": "Require the exact prefix, two canonical unpadded base64url parts of 16 and 32 bytes and an accountId equal to the account being unlocked."
+  },
+  "deviceAssistance": {
+    "mobileHardwareWrapper": {
+      "status": "required-on-trusted-device",
+      "ios": "Keychain item, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly, not synchronizable, excluded from backup",
+      "android": "AES-256-GCM key in Android Keystore (non-exportable) wrapping the Account Secret; the wrapped value lives in app storage excluded from Auto Backup and device transfer",
+      "itemKey": "palladin.account-secret.<accountId>",
+      "deleteOn": ["sign-out", "explicit forget-this-device", "account recovery", "account deletion"]
+    },
+    "browserNonExtractableWrapper": {
+      "status": "required-on-trusted-browser",
+      "key": "WebCrypto AES-GCM 256 CryptoKey generated with extractable=false and usages [encrypt, decrypt], stored as a CryptoKey object in IndexedDB",
+      "envelope": "{ accountId, iv[12], ciphertext } where ciphertext = AES-256-GCM(key, iv, AccountSecret[32], aad = ASCII(PLDNID3BW) || u16be(2) || accountId[16])",
+      "store": "IndexedDB database palladin-device, object store account-secrets, keyed by accountId",
+      "residualRisk": "Script running in the same origin, or malware controlling the browser profile, can use the key to decrypt. The wrapper keeps the raw Account Secret out of storage dumps and off the backend; it does not protect a compromised browser.",
+      "deleteOn": ["sign-out", "explicit forget-this-device", "account recovery", "account deletion"]
+    },
+    "webauthnPrf": "unchanged from v2; optional"
+  },
+  "devicePairing": {
+    "protocolVersion": 2,
+    "purpose": "Deliver the Account Secret from a trusted, unlocked device to a new device of the same account. Only ciphertext crosses the backend.",
+    "roles": {
+      "sender": "unlocked, authenticated client of the account that already holds the Account Secret",
+      "recipient": "new device; not yet able to derive AuthCredential; holds a fresh X-Wing key pair in memory only"
+    },
+    "flows": {
+      "recipient-shows-qr": "The recipient creates the session anonymously and shows the QR; the sender scans it.",
+      "sender-shows-qr": "The authenticated sender creates the session and shows the QR; the recipient scans it and attaches its public key anonymously."
+    },
+    "session": {
+      "transferId": "CSPRNG-16-bytes",
+      "challenge": "server-issued-CSPRNG-32-bytes",
+      "pollToken": "server-issued-CSPRNG-32-bytes returned only to the recipient; the backend stores only SHA-256",
+      "recipientPublicKey": "X-Wing public key, 1216 bytes",
+      "maximumLifetimeSeconds": 300,
+      "singleUse": true,
+      "senderBinding": "the first authenticated sender to read the session is bound; other accounts get not-found"
+    },
+    "qrPayloads": {
+      "recipient-shows-qr": "palladin-pair:v2:r: || base64url(transferId[16]) || . || base64url(SHA-256(recipientPublicKey))",
+      "sender-shows-qr": "palladin-pair:v2:s: || base64url(transferId[16]) || . || base64url(challenge[32])"
+    },
+    "offerBytes": "ASCII(PLDNID3DO) || u16be(2) || accountId[16] || transferId[16] || challenge[32] || SHA-256(recipientPublicKey)[32]",
+    "sas": {
+      "algorithm": "SHA-256(offerBytes)",
+      "truncate": "first-50-bits",
+      "encoding": "lowercase Crockford base32 without padding, grouped 5-5 with '-'",
+      "rule": "Both devices display the SAS; the sender seals only after the user confirms equality. In recipient-shows-qr the scanned public-key digest must also equal SHA-256 of the key served by the backend."
+    },
+    "envelope": {
+      "kem": "X-Wing encapsulation to recipientPublicKey with fresh CSPRNG randomness",
+      "transcriptHash": "SHA-256(ASCII(PLDNID3DT) || u16be(2) || accountId[16] || transferId[16] || challenge[32] || SHA-256(recipientPublicKey)[32] || SHA-256(kemCiphertext)[32])",
+      "kek": "HKDF-SHA-256(ikm = sharedSecret, salt = transcriptHash, info = ASCII(palladin:identity:v3:device-pairing-account-secret), length = 32)",
+      "aead": "XChaCha20-Poly1305-IETF, 24-byte all-zero nonce (single-use key)",
+      "aad": "ASCII(PLDNID3DA) || transcriptHash",
+      "plaintext": "AccountSecret[32]",
+      "wire": "{ kemCiphertext: base64url[1120], ciphertext: base64url[48] }"
+    },
+    "afterDelivery": "The recipient stores the Account Secret with its device wrapper, derives AuthCredential from the password and signs in normally. A wrong Account Secret only fails sign-in.",
+    "reject": ["expired-session", "consumed-session", "sas-not-confirmed", "recipient-key-digest-mismatch", "challenge-mismatch", "malformed-envelope", "aead-failure"]
+  },
+  "recoveryChallenge": {
+    "version": 2,
+    "replaces": "account-recovery-challenge-v1 (crypto_box_seal to the X25519 account key)",
+    "secret": "server CSPRNG 32 bytes; the backend stores only SHA-256 with a short TTL",
+    "kem": "X-Wing encapsulation to the account's current member public key",
+    "key": "HKDF-SHA-256(ikm = sharedSecret, salt = empty, info = ASCII(PLDNRCV2) || userId[16] || SHA-256(memberPublicKey)[32] || SHA-256(kemCiphertext)[32], length = 32)",
+    "aead": "XChaCha20-Poly1305-IETF, 24-byte all-zero nonce (single-use key)",
+    "aad": "ASCII(PLDNRCV2) || userId[16]",
+    "plaintext": "secret[32]",
+    "package": "kemCiphertext[1120] || ciphertext[48] = 1168 bytes, base64url on the wire",
+    "rule": "Domain-separated from every key-wrapper package, so the challenge cannot act as a decryption oracle for stored envelopes."
+  },
+  "recovery": {
+    "flow": [
+      "prove the recovery phrase with recoveryChallenge v2 while signed in",
+      "decrypt the member private key with the recovery key client-side",
+      "generate a new Account Secret, KDF salt and recovery phrase client-side",
+      "derive the new AuthCredential and MasterKey; wrap the unchanged member private key under the new MasterKey and the new recovery key",
+      "atomically replace credential, KDF metadata, private-key wrappers and recovery material; revoke every session",
+      "delete every device wrapper of the old Account Secret on this device; other devices fail sign-in until they receive the new Secret Key",
+      "show the new Emergency Kit and the new recovery phrase",
+      "send the account-recovered e-mail"
+    ],
+    "notification": "be:identity:account-recovered; the e-mail contains time, approximate client and a security contact, never key material"
+  },
+  "migration": {
+    "sourceProfile": {
+      "id": "identity-argon2id-password-v1",
+      "securityVersion": 1,
+      "algorithm": "Argon2id-1.3",
+      "memoryKiB": 32768,
+      "iterations": 2,
+      "parallelism": 1,
+      "outputs": "HKDF-SHA-256(ikm = AccountRoot, salt = accountId[16], info = palladin/identity/password-v1/auth-credential | palladin/identity/password-v1/master-key)"
+    },
+    "targetProfile": "identity-argon2id-account-secret-v2",
+    "trigger": "first unlock of a security version 1 account by a client that supports version 2",
+    "clientSteps": [
+      "unlock with the source profile and decrypt the X25519 member private key in memory",
+      "generate the Account Secret, a new KDF salt, a new X-Wing member key pair and a new recovery phrase",
+      "derive the v2 AuthCredential and MasterKey",
+      "wrap the new member private key under the v2 MasterKey and the new recovery key; keep the X25519 private key only in memory for re-wrapping",
+      "submit the atomic security upgrade",
+      "re-wrap every Vault member envelope addressed to the old key as the next member key generation (key-wrapper purpose 1, suite palladin-xwing-v1)",
+      "store the Account Secret with the device wrapper and show the recovery phrase confirmation and the Emergency Kit"
+    ],
+    "atomicServerWrite": ["securityVersion", "minimumSecurityVersion", "kdfProfileId", "kdfSalt", "credentialRevision", "serverAuthVerifier", "memberPublicKey", "memberPublicKeySuite", "memberKeyVersion", "privateKeyWrapRevision", "encryptedPrivateKey", "recoveryMaterial"],
+    "compareAndSwap": ["accountId", "baseCredentialRevision", "basePrivateKeyWrapRevision", "sourceSecurityVersion", "baseMemberKeyVersion"],
+    "proof": "currentAuthCredential of the source profile",
+    "resume": "If the upgrade committed but re-wrapping did not finish, the next unlock with the v2 profile re-wraps the remaining envelopes; the old X25519 private key is kept only as a wrapped legacy-key record under the v2 MasterKey until no envelope addresses it.",
+    "forbiddenUploads": ["AccountSecret", "AccountRoot", "MasterKey", "privateKey", "recoveryPhrase", "VK", "VDK"]
+  },
+  "errors": [
+    "account-secret-required",
+    "secret-key-malformed",
+    "secret-key-checksum-mismatch",
+    "pairing-expired",
+    "pairing-consumed",
+    "pairing-sas-mismatch",
+    "security-upgrade-conflict"
+  ]
+}

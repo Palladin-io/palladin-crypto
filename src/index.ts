@@ -53,6 +53,77 @@ export {
 } from './identity-kdf'
 export type { IdentityKdfMetadata, IdentityKdfOutputs } from './identity-kdf'
 
+// --- Identity Account Secret KDF v2, Secret Key and Emergency Kit encodings ---
+export {
+  IDENTITY_ACCOUNT_SECRET_PROFILE,
+  ACCOUNT_SECRET_BYTES,
+  SecretKeyError,
+  assertIdentityAccountSecretProfile,
+  identityKdfProfileVersion,
+  generateAccountSecret,
+  deriveIdentityV2,
+  formatSecretKey,
+  parseSecretKey,
+  encodeEmergencyKitQr,
+  parseEmergencyKitQr,
+} from './identity-account-secret'
+export type { SecretKeyErrorCode } from './identity-account-secret'
+
+// --- Secret Key transfer between devices (device pairing v2) ---
+export {
+  DEVICE_PAIRING_PROTOCOL_VERSION,
+  PairingError,
+  generatePairingKeyPair,
+  encodePairingQr,
+  parsePairingQr,
+  pairingRecipientKeyDigest,
+  encodePairingOffer,
+  computePairingSas,
+  sealAccountSecretForPairing,
+  openPairingEnvelope,
+} from './device-pairing'
+export type {
+  PairingErrorCode,
+  PairingKeyPair,
+  PairingQr,
+  PairingSession,
+  PairingEnvelope,
+  SealPairingInput,
+} from './device-pairing'
+
+// --- Browser device wrapper for the Account Secret (web panel and extension) ---
+export {
+  DeviceWrapperError,
+  storeAccountSecretOnDevice,
+  loadAccountSecretFromDevice,
+  deleteAccountSecretFromDevice,
+} from './browser-device-wrapper'
+
+// --- Algorithm-neutral key wrapper (key-wrapper v1 suite registry) ---
+export {
+  KEY_WRAPPER_PROTOCOL_VERSION,
+  KEY_WRAPPER_SUITE,
+  KEY_WRAPPER_PURPOSE,
+  RECIPIENT_KEY_KIND,
+  KEY_WRAPPER_ERROR_CODES,
+  KeyWrapperError,
+} from './key-wrapper/registry'
+export type {
+  KeyWrapperSuiteId,
+  KeyWrapperPurpose,
+  KeyWrapperErrorCode,
+  RecipientKeyKind,
+} from './key-wrapper/registry'
+export {
+  sealKey,
+  openKey,
+  encodeKeyWrapperContext,
+  computeRecipientFingerprint,
+  generateRecipientKeyPair,
+  deriveRecipientPublicKey,
+} from './key-wrapper/key-wrapper'
+export type { KeyWrapperDescriptor, KeyWrapperRecipient, RecipientKeyPair } from './key-wrapper/key-wrapper'
+
 // --- Encoding ---
 export { toBase64, fromBase64, toBase64Url, fromBase64Url } from './encoding'
 
@@ -66,7 +137,6 @@ export * from './hkdf'
 export * from './portable-sha256'
 export * from './generator-history'
 export * from './vault-envelope'
-export * from './x25519-wrapper'
 export * from './account-recovery-challenge'
 export * from './vault-plaintext'
 export * from './vault-protocol'

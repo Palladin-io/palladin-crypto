@@ -1,0 +1,82 @@
+{
+  "addendumVersion": 3,
+  "note": "Deterministic synthetic test data. Production clients use the platform CSPRNG.",
+  "secretKeyDisplay": {
+    "accountId": "00112233-4455-6677-8899-aabbccddeeff",
+    "accountSecretBase64url": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA",
+    "display": "PSK2-041061-050R3G-G28A1C-60T3GF-208H44-RM2MB1-E60S38-DHR78Y-3WG06J",
+    "equivalentInputs": [
+      "psk2-041061-050r3g-g28a1c-60t3gf-208h44-rm2mb1-e60s38-dhr78y-3wg06j",
+      "PSK2 041061 050R3G G28A1C 60T3GF 208H44 RM2MB1 E60S38 DHR78Y 3WG06J",
+      "PSK2-O41O61-O5OR3G-G28A1C-6OT3GF-2O8H44-RM2MB1-E6OS38-DHR78Y-3WGO6J"
+    ],
+    "negative": [
+      {
+        "input": "PSK1-041061-050R3G-G28A1C-60T3GF-208H44-RM2MB1-E60S38-DHR78Y-3WG06J",
+        "error": "secret-key-malformed"
+      },
+      {
+        "input": "PSK2-041061-050R3G-G28A1C-60T3GF-208H44-RM2MB1-E60S38-DHR78Y-3WG06",
+        "error": "secret-key-malformed"
+      },
+      {
+        "input": "PSK2-041061-050R3G-G28A1C-60T3GF-208H44-RM2MB1-E60S38-DHR78Y-3WG06A",
+        "error": "secret-key-checksum-mismatch"
+      },
+      {
+        "input": "PSK2-041061-050R3G-G28A1C-60T3GF-208H44-RM2MB1-E60S38-DHR78Y-3WG06J",
+        "accountId": "00112233-4455-6677-8899-aabbccddeef0",
+        "error": "secret-key-checksum-mismatch"
+      }
+    ]
+  },
+  "emergencyKitQr": {
+    "accountId": "00112233-4455-6677-8899-aabbccddeeff",
+    "payload": "palladin-kit:v1:ABEiM0RVZneImaq7zN3u_w.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"
+  },
+  "devicePairing": {
+    "accountId": "00112233-4455-6677-8899-aabbccddeeff",
+    "transferIdBase64url": "ISEhISEhISEhISEhISEhIQ",
+    "challengeBase64url": "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiI",
+    "recipientSeedHex": "3131313131313131313131313131313131313131313131313131313131313131",
+    "recipientPublicKeySha256Base64url": "0pylgEt8kuY2sJzYCxjutK8JwH4KhIXCPfJGJH7FgKk",
+    "encapsulationRandomnessHex": "23232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323",
+    "qrRecipientShows": "palladin-pair:v2:r:ISEhISEhISEhISEhISEhIQ.0pylgEt8kuY2sJzYCxjutK8JwH4KhIXCPfJGJH7FgKk",
+    "qrSenderShows": "palladin-pair:v2:s:ISEhISEhISEhISEhISEhIQ.IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiI",
+    "offerBytesHex": "504c444e494433444f000200112233445566778899aabbccddeeff212121212121212121212121212121212222222222222222222222222222222222222222222222222222222222222222d29ca5804b7c92e636b09cd80b18eeb4af09c07e0a8485c23df246247ec580a9",
+    "sas": "942en-qbszg",
+    "transcriptHashHex": "4034ea3dc9d55188de8531a5e37ccf409929bca87548ce769f776f36254fab3a",
+    "envelope": {
+      "kemCiphertext": "Z7mSjb8ie7_g3mZar-zlZNlzjgVIZNw42heqLQPMIA1Pllioiy2OzxpFUn7KzsLDXB0AXvzi8Jqj0hHn8veNggjaG_vzt-E9FJrKHWLvE_P42V3MTq3E3KeK4iXSQij52ymkVDK2SlAJDZKAZq2lSKEhhy5WQIwsnQSvvu1Qi64VSxQNc2P2jAFbVfHEOZEanuiR7rnI88L4ps-FyZ8UmNMHZLgputeUIuGeHn04pCvSyebuj6-kcXNwfd3TK9W_go1RBVKmNr38kQO98mur6qkCOUvuzN1W6svxhYJIgfXRWEHjWErc8IjZkFUwPZWgTdePgwnoqsZHkfdJDdoGNoVisCW0D5OKsOiNGWlgA4OzRP9I9za2_JOBu0EP99feuBGk7NVcQbKTygAxD3cWgq8Q5_IgOmNHfRk0v_B5oEqQ3VFHLxDLDNnEOGkho_MUGjtwJ6T-0WbL4q4GluzRTUWarVhlf5KePbBqelBFV_g3G6v2WTVu6odKmXhm6yEvZwJ45i-jcpeSh2a-m40s_6VC7QoS9WuSxp84u_FuAP5kvnGNUW-9qh-_KswtZkzJHPPoCn_J2WS-l4gLAlQoa3NERhoumkfOONuS2idHmq9ubczdnC0iummZSVXn-IbmCCkAK8nmVfWBQgjVQ6rvaTPMXKsxD5-ax3NQVPCuB-McKhGLRlWi21mOPDxMlVBUoOuaeTS7RUfZHd8T2gGEc7KQe0AnP7H51S8qmkHBWQTgTSbAvoSQ78zAdXb1FrQB8RlTQxuyXdF4qtMxw2ljG-or3132oXnIZ92P565YFIfM5gWd-QmP62uGUR1rx3KSxSh6qQTl1OFCAmowBMZl4L1k75vKFZitb90oMwcMmIhr0BUD5tTldWju5Kt4dRPp3P5L1TcM9RxVlZPp4X3RE_b8C6W7z_7Q2hBl-Xyc4r-1gfzknoGwNLbGv0hlz4ne8aev3fStjjF6IMPDwLnncnuvcCn37DkfPaPmWp9wp7RqfAHQHSJfTi9E0axAjGqdu7QPhrnGVliTKZySToALaHbGVjC4x2-FP672JHJ6GPDqS9u1l0c7Rg6AEVy3OiUQaR52psOqdRYWRQbLmjPN-0080NnNTvRYVNZbrUYR5ShGQPgF9ldRMxkCD3twWq5dU4rDGZV4tUovkREFP7XI1t8m0ko21RA50hLc5WSizRAiHO8uidcxd-HlDUebXnFS1HvMzsCydf-A4A58MgjJmUA5bgzkkq47_k0JLfbb3eDcROuQoPVTaePlSV6MkZFB0y2h3HvsutQWs_qSoru0woTo5lW7VeEV9DNrJTGG4Q3QIZSJu7ex6lBFx5cRHFA4ZgXyrs8kXjhz6_lJ8DjP5F23iArSMhNLi9qm92zDAmOcG6MiEBWojV3BSahLVW25L9hPhLOtxx07ZTbOuY6iq3ZPZ-crfDBuuYW_QRR_CzOaRQOpirEP6NNUycQsvQydeUT1Ln0U2OpZd159yeO_Sw",
+      "ciphertext": "_kwL45nZnnma4qur2_0JMctyK7lPKZh0MooEOUU-r1Ft3tfrgCiaw2hrqN0SI0xM"
+    },
+    "accountSecretBase64url": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA",
+    "negative": [
+      {
+        "name": "wrong-account-id-sas",
+        "accountId": "00112233-4455-6677-8899-aabbccddeef0",
+        "expect": "different-sas"
+      },
+      {
+        "name": "wrong-challenge-aead",
+        "challengeBase64url": "JCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQ",
+        "expect": "aead-failure"
+      }
+    ]
+  },
+  "recoveryChallenge": {
+    "userId": "0f0e0d0c-0b0a-4908-8706-050403020100",
+    "memberSeedHex": "4141414141414141414141414141414141414141414141414141414141414141",
+    "memberPublicKeySha256Base64url": "Qli2XQlBlasNZ-wLktI2ebLTHayJhE_ntSMHaO1OWoE",
+    "encapsulationRandomnessHex": "43434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343",
+    "package": "UohXDK3u4r9caW1PygIZAfNeNEXbNx1iVsjFZDDvORKNcVD6WBgysVgJyzlYMoQkdy2E9wvz4u9qkSQLSe7s5Cjm7_CuSSZfPEBvDP4uniLWQX-5_jBe8VWbEwEG-7q_feyHDE0r6keuVj1qgKlyWNsYyKfr5jRuKHQQp-P_6QK-2XHF_UH8S1PkwB54qVWI483cxDfYDQDbCHqTkfwL8UCOWct64Th1WhKyWS0vlH6z4tC6I3MroKASlzraNpmy5_D2RGqv4l5Y3mw_jkMdiPCLYC98KblM9pgQeaS9ne6sD1MBTV_tiM7drM40u88XJ5hB4LxxKb0i1rFMjGU2Xg088e8FPRvm2VDZEbDKBmBNrhYATwWu-pMkZ4u6AKEXDev1idVLY5mEBXKis9FiIbd5y-u1mGzBe3JCf7eqgdJSNbd2r5Ws04145WbB9rY5bLhbQQNJcTEccuz-Me-MAyYE6omEWA7PEQSH3bn24bM8s3cCJlnokFAR1L5lqTNMkyjfWwwnn17m9R_PNHJbteA1s3NlbqbDTEfijoWIu7ceu7FwPyYLNqOczRgQt5Z0dioMNbj7t7bLB2g2-FdKrjlfnaSzxI5Y1lVQ6d9yY3kCZ8MScV-ItcLT5wZjDsDv-IvNK2Pk6ZvGHpHOlitx8hI98kJVIghauyhVQERHRFSkBksUhMO6XDM5U3uvXyRyM4rT-PxaMu2q0Yv7HvSaw4H9ms0nMhSMhpQoAh7mSPmyaJLI7aoLRBbS9NfMaGrqPou1hmsvbRUvwV1844DOrnev_OvbJsY9-gqBV_7nKAWUTRcF7CZumUip1OPDCoZk1D0ZciA1wGH0lZrkQUUzPqfVpJVE6jxJEDcDEbe95jJ3aZlTSZEFMk9Qq5oD2Zxje2DwzxEJL59bwEXmPx6pnL8p85egNl3WshR7S__jqZiIiKkR5d4CSr5-mRQw_8NIE93Fa_WgKEDwdmm-hrIP4Ix8q7POljT1wP_QjQVtEyxTS1Hlf6zm0FQb9y3D2pIO47z2t51UJkinLw_eMHdLXJYEOlKMfFMhMKxJDuwSHfnh1ZNZJc5blD4M-9XMEvwsdVKWZBTyMdG7L9oTS2ai9GLpYg3QP7IZEEN8XcioSmSCkPAqZ2RtPDpg1Q7TGW3pSkOjVNJW2xCi7LFYyBpB-sQkunSSIh0F8KvhDzT7OQTLWwuW0Z5NSU70qlc6W-9xdXCdeSHRD2_hm4qykTcJXktAQ6EsnizEKX5QNXKmtjaME2gpkVpGvr4YijAGxnKwWxP13XkZ2Bic5b9FYhjU00zNbQVmTWeo4TWoMg2jXJd6pot8qBk4AXWKL7u4vp5LYSIFmdffvtpznXOTYfB_NKR3ItXJQuIn0FI_gsvfU2db-w3hg09GS23UZeMadtjkHvej8RcOtixuLRVspvV6fbnvXrow7dBm6YXAPb_er0PN79h4OpG0RmQOLh-VWZ2zXkhKAHG9IYKztg0IEsEMcBizJTVRa5GeijTh--fg-NyxbnVOMomFrrzuOwBQ_zkLoZ6zJMAfVah8NrzqNJczgQ",
+    "secretBase64url": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI",
+    "negative": [
+      {
+        "name": "other-user-id",
+        "userId": "fedcba98-7654-4321-8765-abcdefabcdef",
+        "expect": "aead-failure"
+      }
+    ]
+  }
+}

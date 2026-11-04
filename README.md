@@ -32,8 +32,13 @@ protocol contracts remain authoritative for production behavior.
 - **Script execution package** — canonical Script metadata, typed parameters,
   direct/FULL authorization bindings and fail-closed whole-package verification
   layered over the existing authenticated Vault and grant envelopes.
-- **Account recovery challenge** — `openAccountRecoveryChallenge` opens the
-  Identity recovery challenge and returns the `recoveryProof` secret.
+- **Account recovery challenge** — `openAccountRecoveryChallenge` (v1) and
+  `openAccountRecoveryChallengeV2` (X-Wing) return the `recoveryProof` secret.
+- **Key wrapper** — algorithm-neutral `sealKey` / `openKey` over the
+  key-wrapper v1 suite registry (`palladin-xwing-v1` active,
+  `palladin-x25519-sealed-box-v1` read-only).
+- **Secret Key** — Identity KDF v2 with the Account Secret, PSK2 display,
+  Emergency Kit QR, device pairing and the browser device wrapper.
 
 Protocol 2 is additive in `0.2.x`. The legacy `0.1.x` operations keep their
 original byte format and remain available only for callers that have not yet
@@ -246,3 +251,53 @@ Synthetic vectors for other implementations live in
 from the package). `node scripts/generate-account-recovery-challenge-vectors.mjs`
 regenerates them with libsodium directly; sealed boxes use a fresh ephemeral key,
 so regeneration changes the sealed bytes while keys, userId and secret stay fixed.
+
+### Post-quantum key wrapper and Secret Key (0.16.0)
+
+Breaking: the X25519-named wrapper exports (`sealKeyToX25519Recipient`,
+`openKeyFromX25519Recipient`, `encodeX25519WrapperContext`,
+`computeVaultKeyFingerprint`, `wrapperContextFromMemberVaultKey`,
+`VAULT_KEY_KIND`, `WRAPPER_PURPOSE`, `X25519_SEALED_BOX_V1`) are no longer
+public. No consumer imported them. The frozen vault-v2 and script-execution v1
+operations keep their bytes; the provider's `deriveKey` also accepts bytes.
+
+Byte contracts: palladin-protocol `contracts/key-wrapper/v1` and
+`contracts/identity-kdf/v2` + `v3`. Copies of the registry and vectors live in
+`src/fixtures/` (test-only, excluded from the package).
+
+**Key wrapper.** `sealKey(descriptor, key, recipient)` returns the base64url
+package; `openKey(descriptor, package, recipient)` returns the 32-byte key.
+Build `descriptor` from authenticated Vault/Member/Agent state, never from the
+envelope, and take `recipient.suiteId`, `keyKind`, `keyVersion` and
+`publicKey` from the authenticated key directory. A directory suite that
+differs from `descriptor.wrapperSuiteId` fails as `recipient-mismatch`. Only
+the `active` suite seals; `read-only` suites only open; unknown or retired
+suites, purposes and descriptor fields fail closed. Failures throw
+`KeyWrapperError` with a registry `code`. `generateRecipientKeyPair` creates an
+active-suite key pair (32-byte seed); `computeRecipientFingerprint` computes the
+suite-specific `recipientFingerprint`.
+
+**X-Wing.** `@noble/post-quantum` `ml_kem768_x25519` checked against the
+draft-connolly-cfrg-xwing-kem-10 known-answer vector; XChaCha20-Poly1305 and
+HKDF-SHA-256 per `palladin-xwing-v1`. Public key 1216 bytes, package 1168 bytes;
+lengths are checked before the KEM.
+
+**Secret Key.** `deriveIdentityV2(password, accountSecret, accountId, salt)`
+implements `identity-argon2id-account-secret-v2`; `identityKdfProfileVersion`
+accepts only the password-only v1 profile (for migration) and the v2 profile.
+`formatSecretKey` / `parseSecretKey` handle the account-bound PSK2 text and
+`encodeEmergencyKitQr` / `parseEmergencyKitQr` the kit QR. Errors throw
+`SecretKeyError`.
+
+**Device pairing.** `generatePairingKeyPair`, `encodePairingQr` /
+`parsePairingQr`, `computePairingSas`, `sealAccountSecretForPairing` (sender,
+after the user confirms the SAS; in `recipient-shows-qr` the scanned key digest
+must match the relayed key) and `openPairingEnvelope` (recipient). Errors throw
+`PairingError`.
+
+**Browser device wrapper.** `storeAccountSecretOnDevice`,
+`loadAccountSecretFromDevice` and `deleteAccountSecretFromDevice` keep the
+Account Secret in IndexedDB `palladin-device`/`account-secrets` as AES-256-GCM
+ciphertext under a non-extractable key. Same-origin script or malware in the
+browser profile can still use the key; the wrapper keeps the raw secret out of
+storage dumps and off the backend.

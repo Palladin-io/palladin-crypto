@@ -53,7 +53,7 @@ export class WebCryptoProvider implements CryptoProvider {
     throw new NotImplementedError(this.id, 'scalarMultBase')
   }
 
-  deriveKey(_password: string, _salt: Uint8Array, _params: Argon2Params): Promise<Uint8Array> {
+  deriveKey(_password: string | Uint8Array, _salt: Uint8Array, _params: Argon2Params): Promise<Uint8Array> {
     return Promise.reject(new NotImplementedError(this.id, 'deriveKey'))
   }
 

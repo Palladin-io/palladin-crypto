@@ -1,0 +1,20 @@
+{
+  "vectorVersion": 1,
+  "profileId": "identity-argon2id-account-secret-v2",
+  "description": "Framing and output-domain vector. The AccountRoot is synthetic so validators do not need an Argon2 implementation; client conformance additionally derives the real AccountRoot with the registered profile.",
+  "input": {
+    "password": "Pālladin 🔐",
+    "passwordUtf8Hex": "50c4816c6c6164696e20f09f9490",
+    "passwordUtf8Bytes": 14,
+    "accountSecretBase64url": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA",
+    "accountId": "00112233-4455-6677-8899-aabbccddeeff",
+    "kdfSaltBase64url": "oKGio6SlpqeoqaqrrK2urw",
+    "syntheticAccountRootBase64url": "QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8"
+  },
+  "expected": {
+    "passwordPrehashBase64url": "mgd1_1YGawbQ1UhggrVt2ME0M1CysLSXHTF3ytdUyXU",
+    "outputSaltBase64url": "j28CyETvz5ylFpwNUtzPE7-YfY8951a9wVDPGjxx2Ro",
+    "authCredentialBase64url": "GfluE1P0DH4qBYvrGx8brXYLcWd-vkER1h3Pwbn5LgI",
+    "masterKeyBase64url": "-H5RzHzdhlwaNS-KDaUgeHWhH-DODMBcZYeN2pUqc2k"
+  }
+}

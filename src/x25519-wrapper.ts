@@ -1,7 +1,7 @@
-import { sha256Digest } from './portable-sha256'
 import { wipe } from './sodium'
-import { loadSodium } from './sodium-loader'
 import { fromBase64Url } from './encoding'
+import { encodeWrapperContext, wrapperContextHash } from './key-wrapper/context'
+import { equalBytes, legacyKeyFingerprint, x25519SealedBoxV1 } from './key-wrapper/suites/x25519-sealed-box-v1'
 
 export const X25519_SEALED_BOX_V1 = 'palladin-x25519-sealed-box-v1'
 
@@ -72,10 +72,6 @@ export interface X25519WrapperDescriptorContract {
   parentDescriptorHash?: string | null
 }
 
-const CONTEXT_MAGIC = new TextEncoder().encode('PLDNX2W1')
-const CONTEXT_HASH_MAGIC = new TextEncoder().encode('PLDNX2CTX')
-const PACKAGE_MAGIC = new TextEncoder().encode('PLDNX2K1')
-const FINGERPRINT_MAGIC = new TextEncoder().encode('PLDNV2FP')
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const KEY_BYTES = 32
 const HASH_BYTES = 32
@@ -90,60 +86,9 @@ const SCOPE = {
   member: 1 << 5,
 } as const
 
-class Writer {
-  private readonly chunks: Uint8Array[] = []
-  private size = 0
-  bytes(value: Uint8Array): void { const copy = new Uint8Array(value); this.chunks.push(copy); this.size += copy.length }
-  u8(value: number): void { this.number(value, 1) }
-  u16(value: number): void { this.number(value, 2) }
-  u32(value: number): void { this.number(value, 4) }
-  u64(value: number | bigint): void {
-    if (typeof value === 'number' && !Number.isSafeInteger(value)) throw new RangeError('u64 number must be safe')
-    const normalized = typeof value === 'bigint' ? value : BigInt(value)
-    if (normalized < 0n || normalized > 0xffffffffffffffffn) throw new RangeError('u64 out of range')
-    const output = new Uint8Array(8)
-    new DataView(output.buffer).setBigUint64(0, normalized)
-    this.bytes(output)
-  }
-  ascii(value: string): void {
-    if (!/^[\x20-\x7e]+$/.test(value)) throw new TypeError('Protocol id must be printable ASCII')
-    const encoded = new TextEncoder().encode(value)
-    this.u16(encoded.length)
-    this.bytes(encoded)
-  }
-  finish(): Uint8Array {
-    const output = new Uint8Array(this.size)
-    let offset = 0
-    for (const chunk of this.chunks) { output.set(chunk, offset); offset += chunk.length }
-    return output
-  }
-  private number(value: number, size: 1 | 2 | 4): void {
-    const maximum = 2 ** (size * 8) - 1
-    if (!Number.isSafeInteger(value) || value < 0 || value > maximum) throw new RangeError('Integer out of range')
-    const output = new Uint8Array(size)
-    const view = new DataView(output.buffer)
-    if (size === 1) view.setUint8(0, value)
-    else if (size === 2) view.setUint16(0, value)
-    else view.setUint32(0, value)
-    this.bytes(output)
-  }
-}
-
-function uuidBytes(value: string): Uint8Array {
-  if (!UUID.test(value)) throw new TypeError('Scope identifier must be an RFC 4122 UUID')
-  return Uint8Array.from(value.replaceAll('-', '').match(/../g)!.map((pair) => Number.parseInt(pair, 16)))
-}
-
 function fixed(value: Uint8Array, length: number, name: string): Uint8Array {
   if (value.length !== length) throw new RangeError(`${name} must be ${length} bytes`)
   return value
-}
-
-function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
-  if (left.length !== right.length) return false
-  let difference = 0
-  for (let index = 0; index < left.length; index++) difference |= left[index] ^ right[index]
-  return difference === 0
 }
 
 function presentScopeBitmap(context: X25519WrapperContext): number {
@@ -188,15 +133,7 @@ export async function computeVaultKeyFingerprint(
   protocolVersion = 2,
 ): Promise<Uint8Array> {
   fixed(rawPublicKey, KEY_BYTES, 'Public key')
-  const writer = new Writer()
-  writer.bytes(FINGERPRINT_MAGIC)
-  writer.u16(protocolVersion)
-  writer.u16(keyKind)
-  writer.bytes(rawPublicKey)
-  const input = writer.finish()
-  const copy = new Uint8Array(input.length)
-  copy.set(input)
-  return sha256Digest(copy)
+  return legacyKeyFingerprint(rawPublicKey, keyKind, protocolVersion)
 }
 
 /**
@@ -240,44 +177,37 @@ export function wrapperContextFromMemberVaultKey(
 export function encodeX25519WrapperContext(context: X25519WrapperContext): Uint8Array {
   if (context.wrapperSuiteId !== X25519_SEALED_BOX_V1) throw new TypeError('Unsupported wrapper suite')
   validateContext(context)
-
-  const writer = new Writer()
-  writer.bytes(CONTEXT_MAGIC)
-  writer.u16(context.protocolVersion)
-  writer.ascii(context.wrapperSuiteId)
-  writer.u16(context.purpose)
-  let bitmap = SCOPE.organization | SCOPE.vault
-  if (context.entryId) bitmap |= SCOPE.entry
-  if (context.grantOrRequestId) bitmap |= SCOPE.grantOrRequest
-  if (context.agentId) bitmap |= SCOPE.agent
-  if (context.memberId) bitmap |= SCOPE.member
-  writer.u16(bitmap)
-  writer.bytes(uuidBytes(context.organizationId))
-  writer.bytes(uuidBytes(context.vaultId))
-  if (context.entryId) writer.bytes(uuidBytes(context.entryId))
-  if (context.grantOrRequestId) writer.bytes(uuidBytes(context.grantOrRequestId))
-  if (context.agentId) writer.bytes(uuidBytes(context.agentId))
-  if (context.memberId) writer.bytes(uuidBytes(context.memberId))
-  writer.u64(context.resourceRevision)
-  writer.u32(context.wrappedKeyVersion)
-  writer.u8(context.memberKeyGeneration === undefined ? 0 : 1)
-  if (context.memberKeyGeneration !== undefined) writer.u32(context.memberKeyGeneration)
-  writer.u16(context.recipientKeyKind)
-  writer.u32(context.recipientKeyVersion)
-  writer.bytes(fixed(context.recipientFingerprint, HASH_BYTES, 'Recipient fingerprint'))
-  writer.u8(context.parentDescriptorHash === undefined ? 0 : 1)
-  if (context.parentDescriptorHash) writer.bytes(fixed(context.parentDescriptorHash, HASH_BYTES, 'Parent descriptor hash'))
-  return writer.finish()
+  for (const id of [context.organizationId, context.vaultId, context.entryId, context.grantOrRequestId, context.agentId, context.memberId]) {
+    if (id && !UUID.test(id)) throw new TypeError('Scope identifier must be an RFC 4122 UUID')
+  }
+  if (typeof context.resourceRevision === 'number' && !Number.isSafeInteger(context.resourceRevision)) {
+    throw new RangeError('u64 number must be safe')
+  }
+  return encodeWrapperContext({
+    ...context,
+    scope: {
+      organizationId: context.organizationId,
+      vaultId: context.vaultId,
+      entryId: context.entryId,
+      grantOrRequestId: context.grantOrRequestId,
+      agentId: context.agentId,
+      memberId: context.memberId,
+    },
+    resourceRevision: BigInt(context.resourceRevision),
+    recipientFingerprint: fixed(context.recipientFingerprint, HASH_BYTES, 'Recipient fingerprint'),
+    parentDescriptorHash: context.parentDescriptorHash
+      && fixed(context.parentDescriptorHash, HASH_BYTES, 'Parent descriptor hash'),
+  })
 }
 
-async function computeContextHash(context: X25519WrapperContext): Promise<Uint8Array> {
-  const encoded = encodeX25519WrapperContext(context)
-  const input = new Uint8Array(CONTEXT_HASH_MAGIC.length + encoded.length)
-  input.set(CONTEXT_HASH_MAGIC)
-  input.set(encoded, CONTEXT_HASH_MAGIC.length)
-  return sha256Digest(input)
+async function assertRecipient(recipientPublicKey: Uint8Array, context: X25519WrapperContext): Promise<void> {
+  const fingerprint = await computeVaultKeyFingerprint(recipientPublicKey, context.recipientKeyKind, context.protocolVersion)
+  if (!equalBytes(fingerprint, context.recipientFingerprint)) {
+    throw new Error('Recipient public key fingerprint does not match wrapper context')
+  }
 }
 
+/** Frozen vault-v2 / script-execution v1 write path; new contracts use `sealKey`. */
 export async function sealKeyToX25519Recipient(
   key: Uint8Array,
   recipientPublicKey: Uint8Array,
@@ -285,26 +215,13 @@ export async function sealKeyToX25519Recipient(
 ): Promise<Uint8Array> {
   fixed(key, KEY_BYTES, 'Wrapped key')
   fixed(recipientPublicKey, KEY_BYTES, 'Recipient public key')
-  const recipientFingerprint = await computeVaultKeyFingerprint(
-    recipientPublicKey,
-    context.recipientKeyKind,
-    context.protocolVersion,
-  )
-  if (!equalBytes(recipientFingerprint, context.recipientFingerprint)) {
-    throw new Error('Recipient public key fingerprint does not match wrapper context')
-  }
-  const sodium = await loadSodium()
-  const contextHash = await computeContextHash(context)
-  const plaintextPackage = new Uint8Array(PACKAGE_MAGIC.length + KEY_BYTES + HASH_BYTES)
-  plaintextPackage.set(PACKAGE_MAGIC)
-  plaintextPackage.set(key, PACKAGE_MAGIC.length)
-  plaintextPackage.set(contextHash, PACKAGE_MAGIC.length + KEY_BYTES)
+  await assertRecipient(recipientPublicKey, context)
+  const contextHash = wrapperContextHash(encodeX25519WrapperContext(context))
   try {
-    const sealed = sodium.crypto_box_seal(plaintextPackage, recipientPublicKey)
+    const sealed = await x25519SealedBoxV1.seal(key, recipientPublicKey, contextHash)
     if (sealed.length !== SEALED_PACKAGE_BYTES) throw new Error('Unexpected sealed package length')
     return sealed
   } finally {
-    wipe(plaintextPackage)
     wipe(contextHash)
   }
 }
@@ -318,31 +235,13 @@ export async function openKeyFromX25519Recipient(
   fixed(sealedPackage, SEALED_PACKAGE_BYTES, 'Sealed package')
   fixed(recipientPublicKey, KEY_BYTES, 'Recipient public key')
   fixed(recipientPrivateKey, KEY_BYTES, 'Recipient private key')
-  const recipientFingerprint = await computeVaultKeyFingerprint(
-    recipientPublicKey,
-    context.recipientKeyKind,
-    context.protocolVersion,
-  )
-  if (!equalBytes(recipientFingerprint, context.recipientFingerprint)) {
-    throw new Error('Recipient public key fingerprint does not match wrapper context')
-  }
-  const sodium = await loadSodium()
-  const opened = sodium.crypto_box_seal_open(sealedPackage, recipientPublicKey, recipientPrivateKey)
+  await assertRecipient(recipientPublicKey, context)
+  const contextHash = wrapperContextHash(encodeX25519WrapperContext(context))
   try {
-    const expectedHash = await computeContextHash(context)
-    try {
-      const openedMagic = new Uint8Array(opened.slice(0, PACKAGE_MAGIC.length))
-      const openedHash = new Uint8Array(opened.slice(PACKAGE_MAGIC.length + KEY_BYTES))
-      if (opened.length !== PACKAGE_MAGIC.length + KEY_BYTES + HASH_BYTES
-        || !equalBytes(openedMagic, PACKAGE_MAGIC)
-        || !equalBytes(openedHash, expectedHash)) {
-        throw new Error('X25519 wrapped key context verification failed')
-      }
-      return opened.slice(PACKAGE_MAGIC.length, PACKAGE_MAGIC.length + KEY_BYTES)
-    } finally {
-      wipe(expectedHash)
-    }
+    return await x25519SealedBoxV1.open(sealedPackage, recipientPublicKey, recipientPrivateKey, contextHash)
+  } catch {
+    throw new Error('X25519 wrapped key context verification failed')
   } finally {
-    wipe(opened)
+    wipe(contextHash)
   }
 }
