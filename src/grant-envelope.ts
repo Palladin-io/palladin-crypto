@@ -50,6 +50,9 @@ export interface ProduceGrantEntryEnvelopeParams {
  * The decrypted plaintext and the DEK never leave this function — both are
  * wiped before returning, regardless of success or failure. Nothing here is
  * logged or sent to analytics.
+ *
+ * @deprecated Protocol 1 writer protected only by X25519. New envelopes use
+ * `sealKey` with the recipient's published key suite.
  */
 export async function produceGrantEntryEnvelope({
   entryContent,

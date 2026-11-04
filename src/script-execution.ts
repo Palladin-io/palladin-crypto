@@ -29,14 +29,22 @@ import {
   type CanonicalJson,
 } from './vault-v2-signatures'
 import {
-  computeVaultKeyFingerprint,
-  openKeyFromX25519Recipient,
-  sealKeyToX25519Recipient,
-  VAULT_KEY_KIND,
-  WRAPPER_PURPOSE,
-  X25519_SEALED_BOX_V1,
-  type X25519WrapperContext,
-} from './x25519-wrapper'
+  computeRecipientFingerprint,
+  deriveRecipientPublicKey,
+  openKey,
+  sealingSuiteForRecipientKey,
+  sealKey,
+  type KeyWrapperDescriptor,
+} from './key-wrapper/key-wrapper'
+import {
+  isKeyWrapperSuiteId,
+  KEY_WRAPPER_PROTOCOL_VERSION,
+  KeyWrapperError,
+  KEY_WRAPPER_PURPOSE,
+  KEY_WRAPPER_SUITE,
+  RECIPIENT_KEY_KIND,
+} from './key-wrapper/registry'
+import { fingerprint32ByteKey, SIGNING_KEY_KIND } from './signing-key-fingerprint'
 
 export const SCRIPT_EXECUTION_RESULT_MAX_UTF8_BYTES = 65_536
 export const SCRIPT_EXECUTION_REFERENCE_MAX_COUNT = 64
@@ -139,6 +147,8 @@ const packageTransportBindingSchema = z.object({
   packageRevision: revision,
   recipientAgentKeyVersion: z.number().int().positive(),
   recipientAgentKeyFingerprint: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  // Absent only on packages written before key-wrapper v1; those use the frozen sealed-box suite.
+  wrapperSuiteId: z.string().refine(isKeyWrapperSuiteId).optional(),
   vaultSigningKeyVersion: z.number().int().positive(),
   vaultSigningKeyFingerprint: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
   manifestDigest: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
@@ -220,10 +230,21 @@ export interface SealScriptExecutionPackageInput {
   grantId: string
   packageRevision: string
   recipientAgentKeyVersion: number
-  recipientAgentPublicKey: Uint8Array
+  recipientAgentKey: ScriptExecutionAgentPublicKey
   vaultSigningKeyVersion: number
   vaultSigningPrivateKey: Uint8Array
   entries: readonly ScriptExecutionPackageReferenceInput[]
+}
+
+/** The Agent encryption key and its suite from the authenticated Agent key directory. */
+export interface ScriptExecutionAgentPublicKey {
+  keySuiteId: string
+  publicKey: Uint8Array
+}
+
+export interface ScriptExecutionAgentPrivateKey {
+  keySuiteId: string
+  privateKey: Uint8Array
 }
 
 export interface BuildScriptExecutionManifestInput {
@@ -461,16 +482,15 @@ async function sealPackage(
   let parentDescriptorHash: Uint8Array | undefined
   try {
     assertReferenceEntriesMatchManifest(manifest, entries)
-    recipientFingerprint = await computeVaultKeyFingerprint(
-      input.recipientAgentPublicKey,
-      VAULT_KEY_KIND.agentEncryption,
+    const wrapperSuiteId = sealingSuiteForRecipientKey(input.recipientAgentKey.keySuiteId)
+    recipientFingerprint = computeRecipientFingerprint(
+      wrapperSuiteId,
+      RECIPIENT_KEY_KIND.agentEncryption,
+      input.recipientAgentKey.publicKey,
     )
     ;({ publicKey: vaultSigningPublicKey, privateKey: vaultSigningPrivateKey }
       = await normalizeVaultSigningKey(input.vaultSigningPrivateKey))
-    vaultSigningFingerprint = await computeVaultKeyFingerprint(
-      vaultSigningPublicKey,
-      VAULT_KEY_KIND.vaultSigning,
-    )
+    vaultSigningFingerprint = fingerprint32ByteKey(vaultSigningPublicKey, SIGNING_KEY_KIND.vaultSigning)
     projectedEntries = await projectReferenceEntries(manifest, entries, projectReference)
     const transportBinding = normalizeTransportBinding({
       contractVersion: SCRIPT_EXECUTION_CONTRACT_VERSION,
@@ -484,6 +504,7 @@ async function sealPackage(
       packageRevision: input.packageRevision,
       recipientAgentKeyVersion: input.recipientAgentKeyVersion,
       recipientAgentKeyFingerprint: toBase64Url(recipientFingerprint),
+      wrapperSuiteId,
       vaultSigningKeyVersion: input.vaultSigningKeyVersion,
       vaultSigningKeyFingerprint: toBase64Url(vaultSigningFingerprint),
       manifestDigest: binding.manifestDigest,
@@ -508,23 +529,24 @@ async function sealPackage(
     packageDek = provider.randomBytes(provider.secretboxKeyBytes())
     aad = transportAad(transportBinding)
     parentDescriptorHash = await hashWithDomain('PLDNSCRIPTAAD1', aad)
-    const [suitePayload, sealedDek] = await Promise.all([
+    const [suitePayload, encodedSealedPackageDek] = await Promise.all([
       requireCryptoSuite(VAULT_XCHACHA20_POLY1305_V1).seal({
         plaintext,
         key: packageDek,
         aad,
       }),
-      sealKeyToX25519Recipient(
-        packageDek,
-        input.recipientAgentPublicKey,
-        wrapperContext(transportBinding, recipientFingerprint, parentDescriptorHash),
-      ),
+      sealKey(wrapperDescriptor(transportBinding, parentDescriptorHash), packageDek, {
+        keySuiteId: input.recipientAgentKey.keySuiteId,
+        keyKind: RECIPIENT_KEY_KIND.agentEncryption,
+        keyVersion: transportBinding.recipientAgentKeyVersion,
+        publicKey: input.recipientAgentKey.publicKey,
+      }),
     ])
     const containerBytes = new TextEncoder().encode(canonicalJson({
       schema: 'palladin.script-execution-package-ciphertext.v1',
       contractVersion: SCRIPT_EXECUTION_CONTRACT_VERSION,
       packageRevision: transportBinding.packageRevision,
-      encodedSealedPackageDek: toBase64Url(sealedDek),
+      encodedSealedPackageDek,
       encodedSuitePayload: toBase64Url(suitePayload),
     }))
     try {
@@ -543,7 +565,6 @@ async function sealPackage(
       return { ...unsignedPackage, producerSignature }
     } finally {
       wipe(containerBytes)
-      wipe(sealedDek)
       wipe(suitePayload)
     }
   } finally {
@@ -564,7 +585,7 @@ async function sealPackage(
 
 export async function openScriptExecutionPackage(
   encryptedPackage: ScriptExecutionEncryptedPackageV1,
-  recipientAgentPrivateKey: Uint8Array,
+  recipientAgentKey: ScriptExecutionAgentPrivateKey,
   expectedContext: ScriptExecutionPackageExpectedContextV1,
 ): Promise<OpenedScriptExecutionPackageV1> {
   const { encodedPackageCiphertext, producerSignature, ...outer } = encryptedPackage
@@ -581,25 +602,18 @@ export async function openScriptExecutionPackage(
     || !/^[A-Za-z0-9_-]{86}$/.test(producerSignature)) {
     throw new Error('Script execution package producer authentication is invalid')
   }
-  const provider = getCryptoProvider()
-  await provider.ready()
-  const recipientPublicKey = provider.scalarMultBase(recipientAgentPrivateKey)
-  let recipientFingerprint: Uint8Array | undefined
+  const recipientPublicKey = await deriveRecipientPublicKey(recipientAgentKey.keySuiteId, recipientAgentKey.privateKey)
   let vaultSigningFingerprint: Uint8Array | undefined
   let containerBytes: Uint8Array | undefined
   let aad: CanonicalEnvelopeAad | undefined
   let parentDescriptorHash: Uint8Array | undefined
-  let sealedDek: Uint8Array | undefined
   let suitePayload: EncodedSuitePayload | undefined
   let plaintext: Uint8Array | undefined
   let packageDek: Uint8Array | undefined
   let openedEntries: OpenedScriptExecutionReferenceV1[] | undefined
   let completed = false
   try {
-    vaultSigningFingerprint = await computeVaultKeyFingerprint(
-      expectedContext.vaultSigningPublicKey,
-      VAULT_KEY_KIND.vaultSigning,
-    )
+    vaultSigningFingerprint = fingerprint32ByteKey(expectedContext.vaultSigningPublicKey, SIGNING_KEY_KIND.vaultSigning)
     if (toBase64Url(vaultSigningFingerprint) !== expectedContext.vaultSigningKeyFingerprint
       || !await verifyVaultSignature(
         SCRIPT_EXECUTION_PACKAGE_SIGNATURE_DOMAIN,
@@ -608,13 +622,6 @@ export async function openScriptExecutionPackage(
         expectedContext.vaultSigningPublicKey,
       )) {
       throw new Error('Script execution package producer signature is invalid')
-    }
-    recipientFingerprint = await computeVaultKeyFingerprint(
-      recipientPublicKey,
-      VAULT_KEY_KIND.agentEncryption,
-    )
-    if (toBase64Url(recipientFingerprint) !== transportBinding.recipientAgentKeyFingerprint) {
-      throw new Error('Script execution package recipient does not match the Agent key')
     }
 
     containerBytes = fromBase64Url(encodedPackageCiphertext, SCRIPT_EXECUTION_PACKAGE_MAX_BYTES)
@@ -625,17 +632,22 @@ export async function openScriptExecutionPackage(
     }
     aad = transportAad(transportBinding)
     parentDescriptorHash = await hashWithDomain('PLDNSCRIPTAAD1', aad)
-    sealedDek = fromBase64Url(container.encodedSealedPackageDek, 120)
     suitePayload = fromBase64Url(
       container.encodedSuitePayload,
       MAX_ENCODED_SUITE_PAYLOAD_BYTES,
     ) as EncodedSuitePayload
-    packageDek = await openKeyFromX25519Recipient(
-      sealedDek,
-      recipientPublicKey,
-      recipientAgentPrivateKey,
-      wrapperContext(transportBinding, recipientFingerprint, parentDescriptorHash),
-    )
+    packageDek = await openKey(wrapperDescriptor(transportBinding, parentDescriptorHash), container.encodedSealedPackageDek, {
+      keySuiteId: recipientAgentKey.keySuiteId,
+      keyKind: RECIPIENT_KEY_KIND.agentEncryption,
+      keyVersion: expectedContext.recipientAgentKeyVersion,
+      publicKey: recipientPublicKey,
+      privateKey: recipientAgentKey.privateKey,
+    }).catch((error: unknown) => {
+      if (error instanceof KeyWrapperError && error.code === 'recipient-mismatch') {
+        throw new Error('Script execution package recipient does not match the Agent key')
+      }
+      throw error
+    })
     plaintext = await requireCryptoSuite(VAULT_XCHACHA20_POLY1305_V1).open({
       payload: suitePayload,
       key: packageDek,
@@ -659,12 +671,10 @@ export async function openScriptExecutionPackage(
     return { binding: parsed.binding, manifest, entries: openedEntries }
   } finally {
     wipe(recipientPublicKey)
-    if (recipientFingerprint) wipe(recipientFingerprint)
     if (vaultSigningFingerprint) wipe(vaultSigningFingerprint)
     if (containerBytes) wipe(containerBytes)
     if (aad) wipe(aad)
     if (parentDescriptorHash) wipe(parentDescriptorHash)
-    if (sealedDek) wipe(sealedDek)
     if (suitePayload) wipe(suitePayload)
     if (packageDek) wipe(packageDek)
     if (plaintext) wipe(plaintext)
@@ -678,11 +688,11 @@ export async function refreshScriptExecutionPackage(
   previous: ScriptExecutionEncryptedPackageV1,
   nextManifest: ScriptExecutionManifestV1,
   entries: readonly ScriptExecutionPackageReferenceInput[],
-  recipientAgentPublicKey: Uint8Array,
+  recipientAgentKey: ScriptExecutionAgentPublicKey,
   vaultSigningPrivateKey: Uint8Array,
   vaultSigningKeyVersion = previous.vaultSigningKeyVersion,
 ): Promise<ScriptExecutionEncryptedPackageV1> {
-  return refreshPackage(previous, nextManifest, entries, recipientAgentPublicKey,
+  return refreshPackage(previous, nextManifest, entries, recipientAgentKey,
     vaultSigningPrivateKey, vaultSigningKeyVersion, sealScriptExecutionPackage)
 }
 
@@ -690,11 +700,11 @@ export async function refreshCanonicalScriptExecutionPackage(
   previous: ScriptExecutionEncryptedPackageV1,
   nextManifest: ScriptExecutionManifestV1,
   entries: readonly ScriptExecutionPackageReferenceInput[],
-  recipientAgentPublicKey: Uint8Array,
+  recipientAgentKey: ScriptExecutionAgentPublicKey,
   vaultSigningPrivateKey: Uint8Array,
   vaultSigningKeyVersion = previous.vaultSigningKeyVersion,
 ): Promise<ScriptExecutionEncryptedPackageV1> {
-  return refreshPackage(previous, nextManifest, entries, recipientAgentPublicKey,
+  return refreshPackage(previous, nextManifest, entries, recipientAgentKey,
     vaultSigningPrivateKey, vaultSigningKeyVersion, sealCanonicalScriptExecutionPackage)
 }
 
@@ -702,7 +712,7 @@ async function refreshPackage(
   previous: ScriptExecutionEncryptedPackageV1,
   nextManifest: ScriptExecutionManifestV1,
   entries: readonly ScriptExecutionPackageReferenceInput[],
-  recipientAgentPublicKey: Uint8Array,
+  recipientAgentKey: ScriptExecutionAgentPublicKey,
   vaultSigningPrivateKey: Uint8Array,
   vaultSigningKeyVersion: number,
   seal: typeof sealScriptExecutionPackage,
@@ -723,7 +733,7 @@ async function refreshPackage(
     grantId: current.grantId,
     packageRevision: String(packageRevision + 1n),
     recipientAgentKeyVersion: current.recipientAgentKeyVersion,
-    recipientAgentPublicKey,
+    recipientAgentKey,
     vaultSigningKeyVersion,
     vaultSigningPrivateKey,
     entries,
@@ -947,26 +957,27 @@ function transportAad(binding: ScriptExecutionPackageTransportBindingV1): Canoni
   return new TextEncoder().encode(canonicalJson(normalizeTransportBinding(binding))) as CanonicalEnvelopeAad
 }
 
-function wrapperContext(
+function wrapperDescriptor(
   binding: ScriptExecutionPackageTransportBindingV1,
-  recipientFingerprint: Uint8Array,
   parentDescriptorHash: Uint8Array,
-): X25519WrapperContext {
+): KeyWrapperDescriptor {
   return {
-    protocolVersion: 2,
-    wrapperSuiteId: X25519_SEALED_BOX_V1,
-    purpose: WRAPPER_PURPOSE.scriptExecutionDek,
-    organizationId: binding.organizationId,
-    vaultId: binding.vaultId,
-    entryId: binding.scriptEntryId,
-    grantOrRequestId: binding.grantId,
-    agentId: binding.agentId,
-    resourceRevision: BigInt(binding.packageRevision),
+    protocolVersion: KEY_WRAPPER_PROTOCOL_VERSION,
+    wrapperSuiteId: binding.wrapperSuiteId ?? KEY_WRAPPER_SUITE.legacy,
+    purpose: KEY_WRAPPER_PURPOSE.scriptExecutionDek,
+    scope: {
+      organizationId: binding.organizationId,
+      vaultId: binding.vaultId,
+      entryId: binding.scriptEntryId,
+      grantOrRequestId: binding.grantId,
+      agentId: binding.agentId,
+    },
+    resourceRevision: binding.packageRevision,
     wrappedKeyVersion: 1,
-    recipientKeyKind: VAULT_KEY_KIND.agentEncryption,
+    recipientKeyKind: RECIPIENT_KEY_KIND.agentEncryption,
     recipientKeyVersion: binding.recipientAgentKeyVersion,
-    recipientFingerprint,
-    parentDescriptorHash,
+    recipientFingerprint: binding.recipientAgentKeyFingerprint,
+    parentDescriptorHash: toBase64Url(parentDescriptorHash),
   }
 }
 

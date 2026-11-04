@@ -258,8 +258,27 @@ Breaking: the X25519-named wrapper exports (`sealKeyToX25519Recipient`,
 `openKeyFromX25519Recipient`, `encodeX25519WrapperContext`,
 `computeVaultKeyFingerprint`, `wrapperContextFromMemberVaultKey`,
 `VAULT_KEY_KIND`, `WRAPPER_PURPOSE`, `X25519_SEALED_BOX_V1`) are no longer
-public. No consumer imported them. The frozen vault-v2 and script-execution v1
-operations keep their bytes; the provider's `deriveKey` also accepts bytes.
+public. No consumer imported them. The provider's `deriveKey` also accepts bytes.
+
+New Grant, Script execution and reason envelopes use the suite of the
+recipient's published key (`recipient-key-publication.json`); nothing new is
+sealed with `palladin-x25519-sealed-box-v1`, and envelopes written with it stay
+openable. Breaking signatures:
+
+- `buildCanonicalGrantEnvelope(V2)` requires `agentKeySuiteId` from the Agent
+  key directory; the wrapper descriptor and the Grant binding carry it as
+  `wrapperSuiteId`. A read-only Agent key fails with `key-migration-pending`.
+- Script execution packages carry a signed `wrapperSuiteId` (absent only on
+  packages written before this release). `sealScriptExecutionPackage` and the
+  refresh helpers take `recipientAgentKey: { keySuiteId, publicKey }`;
+  `openScriptExecutionPackage` takes `{ keySuiteId, privateKey }`.
+- `openMemberVaultKey` and `openVaultProjection` take the member's own
+  `KeyWrapperRecipient` (`keySuiteId`, `keyKind` 5, `keyVersion`, `publicKey`,
+  `privateKey`) and open every readable suite. `openMemberVaultMetadata(vault,
+  vaultKey)` opens the metadata with an already opened Vault key.
+- `openEncryptedReason` requires `expected.vaultAgentMessageKeySuiteId` from the
+  verified VaultManifest, and `verifyEncryptedReasonSignature` takes the suite id.
+- `sealVaultKey` and `produceGrantEntryEnvelope` (protocol 1) are deprecated.
 
 Byte contracts: palladin-protocol `contracts/key-wrapper/v1` and
 `contracts/identity-kdf/v2` + `v3`. Copies of the registry and vectors live in

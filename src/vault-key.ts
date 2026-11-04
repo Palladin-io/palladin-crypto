@@ -15,6 +15,9 @@ import { getCryptoProvider } from './provider/active-provider'
  * The raw VK and the derived public key are wiped from local memory
  * before this function returns; the only surviving artefact is the
  * base64 string that is safe to ship over the wire.
+ *
+ * @deprecated Protocol 1 writer protected only by X25519. New envelopes use
+ * `sealKey` with the recipient's published key suite.
  */
 export async function sealVaultKey(privateKey: Uint8Array): Promise<string> {
   const provider = getCryptoProvider()

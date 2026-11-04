@@ -13,6 +13,10 @@ export const KEY_WRAPPER_SUITE = {
 
 export type KeyWrapperSuiteId = (typeof KEY_WRAPPER_SUITE)[keyof typeof KEY_WRAPPER_SUITE]
 
+export function isKeyWrapperSuiteId(value: unknown): value is KeyWrapperSuiteId {
+  return typeof value === 'string' && Object.hasOwn(KEY_WRAPPER_SUITES, value)
+}
+
 export type KeyWrapperSuiteStatus = 'active' | 'read-only' | 'retired'
 
 const ALL_PURPOSES = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const

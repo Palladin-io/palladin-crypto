@@ -1,7 +1,7 @@
-import { sha256Digest } from '../../portable-sha256'
+import { fingerprint32ByteKey } from '../../signing-key-fingerprint'
 import { wipe } from '../../sodium'
 import { loadSodium } from '../../sodium-loader'
-import { concatBytes, encodeU16, encodeUtf8 } from '../../vault-v2-bytes'
+import { concatBytes, encodeUtf8 } from '../../vault-v2-bytes'
 import { KeyWrapperError } from '../registry'
 import type { KeyWrapperSuiteImplementation } from './suite'
 
@@ -9,7 +9,6 @@ import type { KeyWrapperSuiteImplementation } from './suite'
  * palladin-protocol `contracts/key-wrapper/v1/suites/palladin-x25519-sealed-box-v1.json`.
  * Frozen bytes shared with vault-v2, script-execution/v1 and agent-submission/v1.
  */
-const FINGERPRINT_MAGIC = encodeUtf8('PLDNV2FP')
 const PACKAGE_MAGIC = encodeUtf8('PLDNX2K1')
 const KEY_BYTES = 32
 const HASH_BYTES = 32
@@ -22,10 +21,10 @@ export function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
   return difference === 0
 }
 
-/** Legacy fingerprint without the suite id; also used for vault-v2 Ed25519 key kinds. */
-export function legacyKeyFingerprint(publicKey: Uint8Array, keyKind: number, protocolVersion: number): Uint8Array {
+// Frozen fingerprint without the suite id.
+function legacyKeyFingerprint(publicKey: Uint8Array, keyKind: number, protocolVersion: number): Uint8Array {
   if (publicKey.length !== KEY_BYTES) throw new KeyWrapperError('recipient-mismatch')
-  return sha256Digest(concatBytes(FINGERPRINT_MAGIC, encodeU16(protocolVersion), encodeU16(keyKind), publicKey))
+  return fingerprint32ByteKey(publicKey, keyKind, protocolVersion)
 }
 
 export const x25519SealedBoxV1: KeyWrapperSuiteImplementation = {

@@ -13,7 +13,8 @@ import {
   type MemberSecretV1,
 } from './current-vault-plaintext'
 import { toEnvelopeDescriptor, type EnvelopeDescriptorContract } from './vault-envelope'
-import { computeVaultKeyFingerprint, sealKeyToX25519Recipient, VAULT_KEY_KIND, WRAPPER_PURPOSE, X25519_SEALED_BOX_V1 } from './x25519-wrapper'
+import { computeRecipientFingerprint, sealingSuiteForRecipientKey, sealKey } from './key-wrapper/key-wrapper'
+import { KEY_WRAPPER_PURPOSE, KEY_WRAPPER_PROTOCOL_VERSION, RECIPIENT_KEY_KIND } from './key-wrapper/registry'
 
 export const GRANT_DELIVERY_POLICY = { standard: 0, execOnly: 1, injectOnly: 2 } as const
 export type GrantDeliveryPolicy = (typeof GRANT_DELIVERY_POLICY)[keyof typeof GRANT_DELIVERY_POLICY]
@@ -27,7 +28,9 @@ export type GrantDeliveryPolicyName =
 
 export interface BuildGrantEnvelopeInput {
   organizationId: string; vaultId: string; entryId: string; grantId: string; agentId: string
-  entryRevision: string; memberKeyGeneration: number; agentPublicKey: string; recipientKeyVersion: number
+  entryRevision: string; memberKeyGeneration: number
+  /** Agent encryption key and its suite, both from the authenticated Agent key directory. */
+  agentPublicKey: string; agentKeySuiteId: string; recipientKeyVersion: number
   grantEnvelopeRevision: string; grantKeyVersion: number; approvedFieldIds: string[]
   approvedMethods: number; deliveryPolicy?: 0 | 1 | 2
   expiresAt?: string; remainingUses?: number; secret: MemberSecretV1
@@ -88,13 +91,14 @@ async function buildGrantEnvelope(input: BuildGrantEnvelopeInput, version: 1 | 2
     ? await projectGrantPayloadV2(input.secret, approvedPolicyFieldIds)
     : await projectCanonicalGrantPayload(input.secret, approvedPolicyFieldIds)
   const fieldIds = payload.fields.map(({ id }) => id)
+  const wrapperSuiteId = sealingSuiteForRecipientKey(input.agentKeySuiteId)
   const publicKey = fromBase64(input.agentPublicKey)
-  const fingerprint = await computeVaultKeyFingerprint(publicKey, VAULT_KEY_KIND.agentEncryption)
+  const fingerprint = computeRecipientFingerprint(wrapperSuiteId, RECIPIENT_KEY_KIND.agentEncryption, publicKey)
   const commitment = await computeFieldSetCommitment(fieldIds)
   const expiresAt = instant(input.expiresAt)
   const deliveryPolicy = input.deliveryPolicy ?? GRANT_DELIVERY_POLICY.standard
   const binding = {
-    entryRevision: input.entryRevision, wrapperSuiteId: X25519_SEALED_BOX_V1,
+    entryRevision: input.entryRevision, wrapperSuiteId,
     recipientKeyVersion: input.recipientKeyVersion, recipientKeyFingerprint: toBase64Url(fingerprint),
     approvedMethods, deliveryPolicy, fieldSetCommitment: toBase64Url(commitment),
     expiresAt: input.expiresAt ?? null, remainingUses: input.remainingUses ?? null,
@@ -106,7 +110,7 @@ async function buildGrantEnvelope(input: BuildGrantEnvelopeInput, version: 1 | 2
     memberKeyGeneration: input.memberKeyGeneration, binding,
   }
   const extension = {
-    entryRevision: BigInt(input.entryRevision), wrapperSuiteId: X25519_SEALED_BOX_V1,
+    entryRevision: BigInt(input.entryRevision), wrapperSuiteId,
     recipientKeyVersion: input.recipientKeyVersion, recipientKeyFingerprint: fingerprint,
     methods: approvedMethods, deliveryPolicy, fieldSetCommitment: commitment, expiresAt,
     remainingUses: input.remainingUses,
@@ -125,27 +129,19 @@ async function buildGrantEnvelope(input: BuildGrantEnvelopeInput, version: 1 | 2
     const descriptorCopy = new Uint8Array(descriptorBytes)
     const parentHash = sha256Digest(descriptorCopy)
     try {
-      const wrapperContext = {
-        protocolVersion: 2, wrapperSuiteId: X25519_SEALED_BOX_V1, purpose: WRAPPER_PURPOSE.grantDek,
-        organizationId: input.organizationId, vaultId: input.vaultId, entryId: input.entryId,
-        grantOrRequestId: input.grantId, agentId: input.agentId,
-        resourceRevision: BigInt(input.grantEnvelopeRevision),
-        wrappedKeyVersion: input.grantKeyVersion, memberKeyGeneration: input.memberKeyGeneration,
-        recipientKeyKind: VAULT_KEY_KIND.agentEncryption, recipientKeyVersion: input.recipientKeyVersion,
-        recipientFingerprint: fingerprint, parentDescriptorHash: parentHash,
-      } as const
-      const sealed = await sealKeyToX25519Recipient(dek, publicKey, wrapperContext)
-      return {
-        ...envelope,
-        wrappedGrantDek: { descriptor: {
-          protocolVersion: 2, wrapperSuiteId: X25519_SEALED_BOX_V1, purpose: WRAPPER_PURPOSE.grantDek,
-          scope: descriptor.scope, resourceRevision: input.grantEnvelopeRevision,
-          wrappedKeyVersion: input.grantKeyVersion,
-          memberKeyGeneration: input.memberKeyGeneration, recipientKeyKind: VAULT_KEY_KIND.agentEncryption,
-          recipientKeyVersion: input.recipientKeyVersion, recipientFingerprint: toBase64Url(fingerprint),
-          parentDescriptorHash: toBase64Url(parentHash),
-        }, encodedSealedKeyPackage: toBase64Url(sealed) }, fieldIds,
+      const wrapperDescriptor = {
+        protocolVersion: KEY_WRAPPER_PROTOCOL_VERSION, wrapperSuiteId, purpose: KEY_WRAPPER_PURPOSE.grantDek,
+        scope: descriptor.scope, resourceRevision: input.grantEnvelopeRevision,
+        wrappedKeyVersion: input.grantKeyVersion,
+        memberKeyGeneration: input.memberKeyGeneration, recipientKeyKind: RECIPIENT_KEY_KIND.agentEncryption,
+        recipientKeyVersion: input.recipientKeyVersion, recipientFingerprint: toBase64Url(fingerprint),
+        parentDescriptorHash: toBase64Url(parentHash),
       }
+      const encodedSealedKeyPackage = await sealKey(wrapperDescriptor, dek, {
+        keySuiteId: input.agentKeySuiteId, keyKind: RECIPIENT_KEY_KIND.agentEncryption,
+        keyVersion: input.recipientKeyVersion, publicKey,
+      })
+      return { ...envelope, wrappedGrantDek: { descriptor: wrapperDescriptor, encodedSealedKeyPackage }, fieldIds }
     } finally { wipe(parentHash); wipe(descriptorCopy) }
   } finally {
     if (payloadKey) wipe(payloadKey)
