@@ -9,7 +9,7 @@ import {
 } from './x25519-wrapper'
 
 async function memberVaultKeyContract(): Promise<MemberVaultKeyEnvelopeContract> {
-  const fingerprint = await computeVaultKeyFingerprint(new Uint8Array(32).fill(0x44), VAULT_KEY_KIND.memberX25519)
+  const fingerprint = await computeVaultKeyFingerprint(new Uint8Array(32).fill(0x44), VAULT_KEY_KIND.memberEncryption)
   return {
     wrappedVaultKey: {
       descriptor: {
@@ -49,7 +49,7 @@ describe('Member Vault-key wrapper context', () => {
   })
 
   it('rejects a downgraded wrapper protocol before any unwrap attempt', async () => {
-    const fingerprint = await computeVaultKeyFingerprint(new Uint8Array(32), VAULT_KEY_KIND.memberX25519)
+    const fingerprint = await computeVaultKeyFingerprint(new Uint8Array(32), VAULT_KEY_KIND.memberEncryption)
     expect(() => wrapperContextFromMemberVaultKey({
       wrappedVaultKey: {
         descriptor: {

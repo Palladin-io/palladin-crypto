@@ -65,7 +65,7 @@ export async function verifyEncryptedReasonSignature(
   transcript.set(encodedWrapper, transcriptOffset)
   const sodium = await loadSodium()
   try {
-    const fingerprint = await computeVaultKeyFingerprint(signingPublicKey, VAULT_KEY_KIND.agentEd25519)
+    const fingerprint = await computeVaultKeyFingerprint(signingPublicKey, VAULT_KEY_KIND.agentSigning)
     const fingerprintMatches = toBase64Url(fingerprint) === agentSigning.keyFingerprint
     wipe(fingerprint)
     if (signingPublicKey.length !== sodium.crypto_sign_PUBLICKEYBYTES
@@ -108,7 +108,7 @@ export async function openEncryptedReason(
     || wrapper.resourceRevision !== envelope.descriptor.resourceRevision
     || wrapper.wrappedKeyVersion !== envelope.descriptor.keyVersion
     || wrapper.memberKeyGeneration !== envelope.descriptor.memberKeyGeneration
-    || wrapper.recipientKeyKind !== VAULT_KEY_KIND.vaultMessageX25519
+    || wrapper.recipientKeyKind !== VAULT_KEY_KIND.vaultAgentMessage
     || wrapper.recipientKeyVersion !== envelope.descriptor.binding.recipientKeyVersion
     || wrapper.recipientFingerprint !== envelope.descriptor.binding.recipientKeyFingerprint) {
     throw new Error('Reason wrapper does not match its encrypted reason envelope')
@@ -157,7 +157,7 @@ export async function openEncryptedReason(
         grantOrRequestId: expected.grantId, agentId: expected.agentId,
         resourceRevision: BigInt(wrapper.resourceRevision), wrappedKeyVersion: wrapper.wrappedKeyVersion,
         memberKeyGeneration: wrapper.memberKeyGeneration ?? undefined,
-        recipientKeyKind: VAULT_KEY_KIND.vaultMessageX25519,
+        recipientKeyKind: VAULT_KEY_KIND.vaultAgentMessage,
         recipientKeyVersion: wrapper.recipientKeyVersion,
         recipientFingerprint: fromBase64Url(wrapper.recipientFingerprint, 32),
         parentDescriptorHash: wrapper.parentDescriptorHash ? fromBase64Url(wrapper.parentDescriptorHash, 32) : undefined,

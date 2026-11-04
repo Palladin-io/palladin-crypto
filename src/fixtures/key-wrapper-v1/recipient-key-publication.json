@@ -1,0 +1,85 @@
+{
+  "contract": "palladin-key-wrapper-recipient-key-publication",
+  "contractVersion": 1,
+  "summary": "Every published recipient public key names its suite. Frozen contracts that publish a raw 32-byte X25519 key get a successor version with an explicit suite field; their existing objects stay readable while the suite is read-only.",
+  "rule": "A sender selects the suite from the recipient key's publication, never from configuration or the envelope. Sealing to a key whose suite is not active fails with key-migration-pending; the recipient owner must publish an active-suite key first.",
+  "publications": [
+    {
+      "object": "Member and Agent key directory entries",
+      "addedField": {
+        "name": "keySuiteId",
+        "type": "registered suite id",
+        "required": true
+      },
+      "publicKeyLength": "exact suite publicKeyBytes",
+      "fingerprint": "suite fingerprint function",
+      "legacy": "entries without keySuiteId are palladin-x25519-sealed-box-v1"
+    },
+    {
+      "object": "VaultManifest (vault-v2)",
+      "successorSchema": "VaultManifest with vaultAgentMessageKeySuiteId",
+      "addedField": {
+        "name": "vaultAgentMessageKeySuiteId",
+        "type": "registered suite id",
+        "required": true,
+        "signed": true
+      },
+      "changedField": {
+        "name": "vaultAgentMessagePublicKey",
+        "maxBytes": "exact suite publicKeyBytes"
+      },
+      "migration": "An unlocked member client publishes the next manifest revision with a new X-Wing vault agent message key (agentMessageKeyVersion + 1), keeping the previous private key in the Vault's encrypted key material until no pending reason addresses it.",
+      "legacy": "manifests without the field carry an X25519 key; they verify and open but are never sealed to"
+    },
+    {
+      "object": "OrganizationApproverManifest (agent-submission v1)",
+      "successorSchema": "palladin.organization-approver-manifest.v2",
+      "addedField": {
+        "name": "messageKeySuiteId",
+        "type": "registered suite id",
+        "required": true,
+        "signed": true
+      },
+      "changedField": {
+        "name": "messagePublicKey",
+        "maxBytes": "exact suite publicKeyBytes"
+      },
+      "migration": "An approver client performs the existing keyVersion + 1 rotation with continuitySignature; the new message key is X-Wing.",
+      "legacy": "v1 manifests stay verifiable; pending v1 submissions are re-wrapped by the Agent for the new key version through the existing re-wrap path"
+    },
+    {
+      "object": "AgentEntrySubmission (agent-submission v1)",
+      "successorSchema": "palladin.agent-entry-submission.v2",
+      "addedFields": [
+        {
+          "name": "agentWrappedDekSuiteId",
+          "type": "registered suite id",
+          "required": true,
+          "signed": true
+        },
+        {
+          "name": "approverWrappedDekSuiteId",
+          "type": "registered suite id",
+          "required": true,
+          "signed": true
+        }
+      ],
+      "wrapperContext": "each wrapped DEK uses its own suite id in the key-wrapper context (purpose 7); the suite must equal the recipient key publication's suite",
+      "legacy": "v1 submissions stay decidable while palladin-x25519-sealed-box-v1 is read-only"
+    },
+    {
+      "object": "Grant envelopes (vault-v2 GrantDEK, purpose 4), Agent Vault key (purpose 5), Agent discovery key (purpose 2) and Script execution packages (script-execution v1, purpose 6)",
+      "addedField": {
+        "name": "wrapperSuiteId",
+        "type": "registered suite id",
+        "required": true,
+        "signed": true
+      },
+      "wrapperContext": "the wrapper suite equals the recipient Agent key publication's suite; contracts that name palladin-x25519-sealed-box-v1 as a constant are superseded for new writes",
+      "legacy": "existing envelopes and packages sealed with palladin-x25519-sealed-box-v1 stay openable while that suite is read-only"
+    }
+  ],
+  "errors": [
+    "key-migration-pending"
+  ]
+}

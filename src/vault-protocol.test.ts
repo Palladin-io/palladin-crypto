@@ -31,7 +31,7 @@ async function createEncryptedVaultProjection(vaultKeyVersion = 1, memberKeyGene
     scope: { organizationId, vaultId, memberId },
     resourceRevision: String(vaultKeyVersion), wrappedKeyVersion: vaultKeyVersion,
     memberKeyGeneration, recipientKeyKind: 5, recipientKeyVersion: 1,
-    recipientFingerprint: toBase64Url(await computeVaultKeyFingerprint(member.publicKey, VAULT_KEY_KIND.memberX25519)),
+    recipientFingerprint: toBase64Url(await computeVaultKeyFingerprint(member.publicKey, VAULT_KEY_KIND.memberEncryption)),
     parentDescriptorHash: null,
   }, encodedSealedKeyPackage: '' } }
   memberContract.wrappedVaultKey.encodedSealedKeyPackage = toBase64Url(await sealKeyToX25519Recipient(

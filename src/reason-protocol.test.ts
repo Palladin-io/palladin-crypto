@@ -43,7 +43,7 @@ describe('openEncryptedReason', () => {
     new DataView(transcript.buffer).setUint16(offset, suite.length); offset += 2
     transcript.set(suite, offset); offset += suite.length
     transcript.set(wrapper, offset)
-    const fingerprint = await computeVaultKeyFingerprint(signing.publicKey, VAULT_KEY_KIND.agentEd25519)
+    const fingerprint = await computeVaultKeyFingerprint(signing.publicKey, VAULT_KEY_KIND.agentSigning)
     const identity = { publicKey: toBase64(signing.publicKey), keyVersion: 1, keyFingerprint: toBase64Url(fingerprint) }
     const signature = sodium.crypto_sign_detached(transcript, signing.privateKey)
     try {
@@ -103,7 +103,7 @@ async function signedReasonFixture(plaintext = '{"reason":"Synthetic request"}')
   }
   const vaultKey = new Uint8Array(32).fill(5), dek = new Uint8Array(32).fill(3)
   const recipient = sodium.crypto_box_keypair(), signing = sodium.crypto_sign_keypair()
-  const fingerprint = await computeVaultKeyFingerprint(recipient.publicKey, VAULT_KEY_KIND.vaultMessageX25519)
+  const fingerprint = await computeVaultKeyFingerprint(recipient.publicKey, VAULT_KEY_KIND.vaultAgentMessage)
   const descriptor: EncryptedReasonContract['descriptor'] = {
     protocolVersion: 2, cryptoSuiteId: VAULT_XCHACHA20_POLY1305_V1, purpose: ENVELOPE_PURPOSE.reason,
     scope: { organizationId: expected.organizationId, vaultId: expected.vaultId, entryId: expected.entryId,
@@ -120,7 +120,7 @@ async function signedReasonFixture(plaintext = '{"reason":"Synthetic request"}')
   const wrapper = { protocolVersion: 2, wrapperSuiteId: X25519_SEALED_BOX_V1, purpose: WRAPPER_PURPOSE.reasonDek,
     organizationId: expected.organizationId, vaultId: expected.vaultId, entryId: expected.entryId,
     grantOrRequestId: expected.grantId, agentId: expected.agentId, resourceRevision,
-    wrappedKeyVersion: 1, memberKeyGeneration: 1, recipientKeyKind: VAULT_KEY_KIND.vaultMessageX25519,
+    wrappedKeyVersion: 1, memberKeyGeneration: 1, recipientKeyKind: VAULT_KEY_KIND.vaultAgentMessage,
     recipientKeyVersion: 1, recipientFingerprint: fingerprint, parentDescriptorHash: parentHash } as const
   const sealed = await sealKeyToX25519Recipient(dek, recipient.publicKey, wrapper)
   const prefix = new TextEncoder().encode('PLDNV2SIG:ENCRYPTED-REASON:'), suite = new TextEncoder().encode(X25519_SEALED_BOX_V1)
@@ -133,7 +133,7 @@ async function signedReasonFixture(plaintext = '{"reason":"Synthetic request"}')
   void ignored
   const wrappingKey = await deriveVaultSubkey(vaultKey, privateKdf)
   const privateEnvelope = await sealVaultEnvelope(privateDescriptor, recipient.privateKey, wrappingKey, { wrappingVkVersion: 1 })
-  const identity = { publicKey: toBase64(signing.publicKey), keyVersion: 1, keyFingerprint: toBase64Url(await computeVaultKeyFingerprint(signing.publicKey, VAULT_KEY_KIND.agentEd25519)) }
+  const identity = { publicKey: toBase64(signing.publicKey), keyVersion: 1, keyFingerprint: toBase64Url(await computeVaultKeyFingerprint(signing.publicKey, VAULT_KEY_KIND.agentSigning)) }
   wipe(recipient.privateKey); wipe(signing.privateKey); wipe(payloadKey); wipe(wrappingKey); wipe(dek)
   return { envelope, privateEnvelope, identity, expected, vaultKey }
 }

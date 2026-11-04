@@ -463,13 +463,13 @@ async function sealPackage(
     assertReferenceEntriesMatchManifest(manifest, entries)
     recipientFingerprint = await computeVaultKeyFingerprint(
       input.recipientAgentPublicKey,
-      VAULT_KEY_KIND.agentX25519,
+      VAULT_KEY_KIND.agentEncryption,
     )
     ;({ publicKey: vaultSigningPublicKey, privateKey: vaultSigningPrivateKey }
       = await normalizeVaultSigningKey(input.vaultSigningPrivateKey))
     vaultSigningFingerprint = await computeVaultKeyFingerprint(
       vaultSigningPublicKey,
-      VAULT_KEY_KIND.vaultSigningEd25519,
+      VAULT_KEY_KIND.vaultSigning,
     )
     projectedEntries = await projectReferenceEntries(manifest, entries, projectReference)
     const transportBinding = normalizeTransportBinding({
@@ -598,7 +598,7 @@ export async function openScriptExecutionPackage(
   try {
     vaultSigningFingerprint = await computeVaultKeyFingerprint(
       expectedContext.vaultSigningPublicKey,
-      VAULT_KEY_KIND.vaultSigningEd25519,
+      VAULT_KEY_KIND.vaultSigning,
     )
     if (toBase64Url(vaultSigningFingerprint) !== expectedContext.vaultSigningKeyFingerprint
       || !await verifyVaultSignature(
@@ -611,7 +611,7 @@ export async function openScriptExecutionPackage(
     }
     recipientFingerprint = await computeVaultKeyFingerprint(
       recipientPublicKey,
-      VAULT_KEY_KIND.agentX25519,
+      VAULT_KEY_KIND.agentEncryption,
     )
     if (toBase64Url(recipientFingerprint) !== transportBinding.recipientAgentKeyFingerprint) {
       throw new Error('Script execution package recipient does not match the Agent key')
@@ -963,7 +963,7 @@ function wrapperContext(
     agentId: binding.agentId,
     resourceRevision: BigInt(binding.packageRevision),
     wrappedKeyVersion: 1,
-    recipientKeyKind: VAULT_KEY_KIND.agentX25519,
+    recipientKeyKind: VAULT_KEY_KIND.agentEncryption,
     recipientKeyVersion: binding.recipientAgentKeyVersion,
     recipientFingerprint,
     parentDescriptorHash,

@@ -16,11 +16,11 @@ export const WRAPPER_PURPOSE = {
 export type WrapperPurpose = (typeof WRAPPER_PURPOSE)[keyof typeof WRAPPER_PURPOSE]
 
 export const VAULT_KEY_KIND = {
-  agentX25519: 1,
-  agentEd25519: 2,
-  vaultSigningEd25519: 3,
-  vaultMessageX25519: 4,
-  memberX25519: 5,
+  agentEncryption: 1,
+  agentSigning: 2,
+  vaultSigning: 3,
+  vaultAgentMessage: 4,
+  memberEncryption: 5,
 } as const
 
 export type VaultKeyKind = (typeof VAULT_KEY_KIND)[keyof typeof VAULT_KEY_KIND]
@@ -106,15 +106,15 @@ function validateContext(context: X25519WrapperContext): void {
   const vault = SCOPE.organization | SCOPE.vault
   const parentBound = vault | SCOPE.entry | SCOPE.grantOrRequest | SCOPE.agent
   const expected = context.purpose === WRAPPER_PURPOSE.memberVaultKey
-    ? { scope: vault | SCOPE.member, kind: VAULT_KEY_KIND.memberX25519, parent: false }
+    ? { scope: vault | SCOPE.member, kind: VAULT_KEY_KIND.memberEncryption, parent: false }
     : context.purpose === WRAPPER_PURPOSE.agentVaultDiscoveryKey
-      ? { scope: vault | SCOPE.agent, kind: VAULT_KEY_KIND.agentX25519, parent: false }
+      ? { scope: vault | SCOPE.agent, kind: VAULT_KEY_KIND.agentEncryption, parent: false }
       : context.purpose === WRAPPER_PURPOSE.reasonDek
-        ? { scope: parentBound, kind: VAULT_KEY_KIND.vaultMessageX25519, parent: true }
+        ? { scope: parentBound, kind: VAULT_KEY_KIND.vaultAgentMessage, parent: true }
         : context.purpose === WRAPPER_PURPOSE.grantDek
-          ? { scope: parentBound, kind: VAULT_KEY_KIND.agentX25519, parent: true }
+          ? { scope: parentBound, kind: VAULT_KEY_KIND.agentEncryption, parent: true }
           : context.purpose === WRAPPER_PURPOSE.scriptExecutionDek
-            ? { scope: parentBound, kind: VAULT_KEY_KIND.agentX25519, parent: true }
+            ? { scope: parentBound, kind: VAULT_KEY_KIND.agentEncryption, parent: true }
           : undefined
   if (!expected || presentScopeBitmap(context) !== expected.scope
     || context.recipientKeyKind !== expected.kind
@@ -148,7 +148,7 @@ export function wrapperContextFromMemberVaultKey(
     throw new TypeError('Unsupported or downgraded X25519 wrapper protocol')
   }
   if (descriptor.purpose !== WRAPPER_PURPOSE.memberVaultKey
-    || descriptor.recipientKeyKind !== VAULT_KEY_KIND.memberX25519
+    || descriptor.recipientKeyKind !== VAULT_KEY_KIND.memberEncryption
     || descriptor.scope.memberId == null
     || descriptor.scope.entryId != null
     || descriptor.scope.grantOrRequestId != null
@@ -168,7 +168,7 @@ export function wrapperContextFromMemberVaultKey(
     resourceRevision: BigInt(descriptor.resourceRevision),
     wrappedKeyVersion: descriptor.wrappedKeyVersion,
     memberKeyGeneration: descriptor.memberKeyGeneration,
-    recipientKeyKind: VAULT_KEY_KIND.memberX25519,
+    recipientKeyKind: VAULT_KEY_KIND.memberEncryption,
     recipientKeyVersion: descriptor.recipientKeyVersion,
     recipientFingerprint: fromBase64Url(descriptor.recipientFingerprint, HASH_BYTES),
   }

@@ -89,7 +89,7 @@ async function buildGrantEnvelope(input: BuildGrantEnvelopeInput, version: 1 | 2
     : await projectCanonicalGrantPayload(input.secret, approvedPolicyFieldIds)
   const fieldIds = payload.fields.map(({ id }) => id)
   const publicKey = fromBase64(input.agentPublicKey)
-  const fingerprint = await computeVaultKeyFingerprint(publicKey, VAULT_KEY_KIND.agentX25519)
+  const fingerprint = await computeVaultKeyFingerprint(publicKey, VAULT_KEY_KIND.agentEncryption)
   const commitment = await computeFieldSetCommitment(fieldIds)
   const expiresAt = instant(input.expiresAt)
   const deliveryPolicy = input.deliveryPolicy ?? GRANT_DELIVERY_POLICY.standard
@@ -131,7 +131,7 @@ async function buildGrantEnvelope(input: BuildGrantEnvelopeInput, version: 1 | 2
         grantOrRequestId: input.grantId, agentId: input.agentId,
         resourceRevision: BigInt(input.grantEnvelopeRevision),
         wrappedKeyVersion: input.grantKeyVersion, memberKeyGeneration: input.memberKeyGeneration,
-        recipientKeyKind: VAULT_KEY_KIND.agentX25519, recipientKeyVersion: input.recipientKeyVersion,
+        recipientKeyKind: VAULT_KEY_KIND.agentEncryption, recipientKeyVersion: input.recipientKeyVersion,
         recipientFingerprint: fingerprint, parentDescriptorHash: parentHash,
       } as const
       const sealed = await sealKeyToX25519Recipient(dek, publicKey, wrapperContext)
@@ -141,7 +141,7 @@ async function buildGrantEnvelope(input: BuildGrantEnvelopeInput, version: 1 | 2
           protocolVersion: 2, wrapperSuiteId: X25519_SEALED_BOX_V1, purpose: WRAPPER_PURPOSE.grantDek,
           scope: descriptor.scope, resourceRevision: input.grantEnvelopeRevision,
           wrappedKeyVersion: input.grantKeyVersion,
-          memberKeyGeneration: input.memberKeyGeneration, recipientKeyKind: VAULT_KEY_KIND.agentX25519,
+          memberKeyGeneration: input.memberKeyGeneration, recipientKeyKind: VAULT_KEY_KIND.agentEncryption,
           recipientKeyVersion: input.recipientKeyVersion, recipientFingerprint: toBase64Url(fingerprint),
           parentDescriptorHash: toBase64Url(parentHash),
         }, encodedSealedKeyPackage: toBase64Url(sealed) }, fieldIds,

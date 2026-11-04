@@ -41,11 +41,12 @@ export interface KeyWrapperDescriptor {
 }
 
 /**
- * Recipient key as registered in its authenticated key directory. `suiteId`
- * must come from that directory entry, never from the envelope being opened.
+ * Recipient key as published in its authenticated key directory or signed
+ * manifest. `keySuiteId` is the publication's suite, never a value taken from
+ * the envelope being opened.
  */
 export interface KeyWrapperRecipient {
-  suiteId: string
+  keySuiteId: string
   keyKind: number
   keyVersion: number
   publicKey: Uint8Array
@@ -54,7 +55,7 @@ export interface KeyWrapperRecipient {
 }
 
 export interface RecipientKeyPair {
-  suiteId: KeyWrapperSuiteId
+  keySuiteId: KeyWrapperSuiteId
   publicKey: Uint8Array
   /** 32-byte seed. Keep in memory only and `wipe` after use. */
   privateKey: Uint8Array
@@ -160,7 +161,7 @@ function bindRecipient(
   recipient: KeyWrapperRecipient,
 ): void {
   if (!isObject(recipient)
-    || recipient.suiteId !== context.wrapperSuiteId
+    || recipient.keySuiteId !== context.wrapperSuiteId
     || recipient.keyKind !== context.recipientKeyKind
     || recipient.keyVersion !== context.recipientKeyVersion
     || !(recipient.publicKey instanceof Uint8Array)) fail('recipient-mismatch')
@@ -170,9 +171,22 @@ function bindRecipient(
 
 function prepare(descriptor: KeyWrapperDescriptor, recipient: KeyWrapperRecipient, operation: 'seal' | 'open') {
   const { implementation, rule } = resolveSuite(descriptor, operation)
+  if (operation === 'seal' && isObject(recipient)) sealingSuiteForRecipientKey(recipient.keySuiteId)
   const context = validateDescriptor(descriptor, rule)
   bindRecipient(context, implementation, recipient)
   return { implementation, contextHash: wrapperContextHash(encodeWrapperContext(context)) }
+}
+
+/**
+ * Returns the suite a sender must use for a recipient key publication. A
+ * registered suite that is no longer active fails with `key-migration-pending`:
+ * the recipient must publish an active-suite key before anything is sealed to it.
+ */
+export function sealingSuiteForRecipientKey(keySuiteId: string): KeyWrapperSuiteId {
+  if (typeof keySuiteId !== 'string' || !suiteImplementation(keySuiteId)) return fail('unsupported-suite')
+  const suiteId = keySuiteId as KeyWrapperSuiteId
+  if (!SUITE_LIFECYCLE[KEY_WRAPPER_SUITES[suiteId].status].seal) fail('key-migration-pending')
+  return suiteId
 }
 
 /**
@@ -194,7 +208,7 @@ export async function sealKey(
 /**
  * Opens a package and returns the 32-byte wrapped key (caller wipes it).
  * `descriptor` is the expected descriptor built independently of the package;
- * `recipient.suiteId` is the suite registered in the authenticated key directory.
+ * `recipient.keySuiteId` is the suite of the authenticated key publication.
  */
 export async function openKey(
   descriptor: KeyWrapperDescriptor,
@@ -238,9 +252,9 @@ export function computeRecipientFingerprint(
 export async function generateRecipientKeyPair(): Promise<RecipientKeyPair> {
   const provider = getCryptoProvider()
   await provider.ready()
-  const suiteId = KEY_WRAPPER_SUITE.active
-  const privateKey = provider.randomBytes(IMPLEMENTATIONS[suiteId].privateKeyBytes)
-  return { suiteId, privateKey, publicKey: await IMPLEMENTATIONS[suiteId].publicKeyFromPrivateKey(privateKey) }
+  const keySuiteId = KEY_WRAPPER_SUITE.active
+  const privateKey = provider.randomBytes(IMPLEMENTATIONS[keySuiteId].privateKeyBytes)
+  return { keySuiteId, privateKey, publicKey: await IMPLEMENTATIONS[keySuiteId].publicKeyFromPrivateKey(privateKey) }
 }
 
 /** Recomputes the public key of a stored private key so callers can compare it with the key directory. */

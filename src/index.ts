@@ -121,6 +121,7 @@ export {
   computeRecipientFingerprint,
   generateRecipientKeyPair,
   deriveRecipientPublicKey,
+  sealingSuiteForRecipientKey,
 } from './key-wrapper/key-wrapper'
 export type { KeyWrapperDescriptor, KeyWrapperRecipient, RecipientKeyPair } from './key-wrapper/key-wrapper'
 

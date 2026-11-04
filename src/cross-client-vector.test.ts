@@ -85,7 +85,7 @@ describe(`shared Rust vector: ${wrapperVector.name}`, () => {
     resourceRevision: source.resourceRevision,
     wrappedKeyVersion: source.wrappedKeyVersion,
     memberKeyGeneration: source.memberKeyGeneration,
-    recipientKeyKind: VAULT_KEY_KIND.agentX25519,
+    recipientKeyKind: VAULT_KEY_KIND.agentEncryption,
     recipientKeyVersion: source.recipientKeyVersion,
     recipientFingerprint: bytes(source.recipientFingerprintHex),
     parentDescriptorHash: bytes(source.parentDescriptorHashHex),
@@ -94,7 +94,7 @@ describe(`shared Rust vector: ${wrapperVector.name}`, () => {
   it('matches the domain-separated fingerprint and canonical wrapper context', async () => {
     const fingerprint = await computeVaultKeyFingerprint(
       bytes(wrapperVector.recipientPublicKeyHex),
-      VAULT_KEY_KIND.agentX25519,
+      VAULT_KEY_KIND.agentEncryption,
     )
     expect(hex(fingerprint)).toBe(source.recipientFingerprintHex)
     expect(hex(encodeX25519WrapperContext(context))).toBe(wrapperVector.expectedContextHex)

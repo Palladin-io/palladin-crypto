@@ -268,12 +268,17 @@ Byte contracts: palladin-protocol `contracts/key-wrapper/v1` and
 **Key wrapper.** `sealKey(descriptor, key, recipient)` returns the base64url
 package; `openKey(descriptor, package, recipient)` returns the 32-byte key.
 Build `descriptor` from authenticated Vault/Member/Agent state, never from the
-envelope, and take `recipient.suiteId`, `keyKind`, `keyVersion` and
-`publicKey` from the authenticated key directory. A directory suite that
-differs from `descriptor.wrapperSuiteId` fails as `recipient-mismatch`. Only
+envelope, and take `recipient.keySuiteId`, `keyKind`, `keyVersion` and
+`publicKey` from the authenticated key publication (key directory or signed
+manifest). Senders pick `descriptor.wrapperSuiteId` with
+`sealingSuiteForRecipientKey(keySuiteId)`; a published key whose suite is not
+active fails with `key-migration-pending`. A publication suite that differs from
+`descriptor.wrapperSuiteId` fails as `recipient-mismatch`. Only
 the `active` suite seals; `read-only` suites only open; unknown or retired
 suites, purposes and descriptor fields fail closed. Failures throw
-`KeyWrapperError` with a registry `code`. `generateRecipientKeyPair` creates an
+`KeyWrapperError` with a registry `code`. `KEY_WRAPPER_PURPOSE` and
+`RECIPIENT_KEY_KIND` keys are the neutral backend JSON enum names (for example
+`memberVaultKey`, `memberEncryption`) mapped to their numeric context values. `generateRecipientKeyPair` creates an
 active-suite key pair (32-byte seed); `computeRecipientFingerprint` computes the
 suite-specific `recipientFingerprint`.
 
@@ -298,6 +303,7 @@ must match the relayed key) and `openPairingEnvelope` (recipient). Errors throw
 **Browser device wrapper.** `storeAccountSecretOnDevice`,
 `loadAccountSecretFromDevice` and `deleteAccountSecretFromDevice` keep the
 Account Secret in IndexedDB `palladin-device`/`account-secrets` as AES-256-GCM
-ciphertext under a non-extractable key. Same-origin script or malware in the
+ciphertext under a non-extractable key. Call `deleteAccountSecretFromDevice` on
+sign-out, forget-this-device, account recovery and account deletion. Same-origin script or malware in the
 browser profile can still use the key; the wrapper keeps the raw secret out of
 storage dumps and off the backend.

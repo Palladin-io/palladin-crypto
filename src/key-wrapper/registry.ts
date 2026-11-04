@@ -107,6 +107,8 @@ export const KEY_WRAPPER_ERROR_CODES = [
   'malformed-package',
   'recipient-mismatch',
   'open-failed',
+  // recipient-key-publication.json: the recipient's published key suite is not active.
+  'key-migration-pending',
 ] as const
 
 export type KeyWrapperErrorCode = (typeof KEY_WRAPPER_ERROR_CODES)[number]
