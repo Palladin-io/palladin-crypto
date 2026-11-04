@@ -84,6 +84,11 @@ export class LibsodiumProvider implements CryptoProvider {
    * `memzero` is resistant to compiler dead-store elimination.
    */
   wipe(arr: Uint8Array): void {
-    sodium.memzero(arr)
+    try {
+      sodium.memzero(arr)
+    } catch {
+      // memzero rejects Uint8Arrays from another realm (e.g. jsdom's TextEncoder); zero them anyway.
+      arr.fill(0)
+    }
   }
 }

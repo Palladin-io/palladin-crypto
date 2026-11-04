@@ -1,3 +1,4 @@
+import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
 import { getCryptoProvider } from './active-provider'
 import { LibsodiumProvider } from './libsodium-provider'
@@ -43,6 +44,17 @@ describe('LibsodiumProvider', () => {
   it('throws if used before ready()', () => {
     const p = new LibsodiumProvider()
     expect(() => p.randomBytes(1)).toThrow()
+  })
+})
+
+describe('LibsodiumProvider.wipe', () => {
+  it('zeroes a Uint8Array created in another realm', async () => {
+    const provider = new LibsodiumProvider()
+    await provider.ready()
+    const foreign = runInNewContext('new Uint8Array([1, 2, 3])') as Uint8Array
+    expect(foreign instanceof Uint8Array).toBe(false)
+    provider.wipe(foreign)
+    expect(Array.from(foreign)).toEqual([0, 0, 0])
   })
 })
 
