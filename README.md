@@ -246,3 +246,32 @@ Synthetic vectors for other implementations live in
 from the package). `node scripts/generate-account-recovery-challenge-vectors.mjs`
 regenerates them with libsodium directly; sealed boxes use a fresh ephemeral key,
 so regeneration changes the sealed bytes while keys, userId and secret stay fixed.
+
+## Multiple Credential sign-in methods (0.17.0 candidate)
+
+Use `SIGN_IN_FIELD_TYPE_V2` for each new per-method custom field, retaining its
+stable `custom:<UUID>` ID. The value uses the existing strict
+`signInMethodValueSchema` (`provider`, nullable `account`, nullable provider Entry
+reference). New methods default to `never`; only Credential methods can opt into
+`discovery`. They are never grantable fields.
+
+`projectSignInDiscoveryField` chooses the serialized Discovery field. With any
+v2 field it emits `signInMethods`, containing only sorted method IDs, providers
+and optional Entry references. `projectSignInMethodsDiscovery` returns the
+structured v2 collection; `canonicalSignInMethodsDiscovery` serializes it.
+`signInMethodsDiscoverySchema` and `signInMethodIdSchema` validate this independent
+Agent protocol boundary. Accounts and custom-field labels never enter Discovery.
+The existing v1 exports and legacy-only bytes remain supported. The singleton
+helper returns null for mixed/v2 data so callers cannot select a legacy subset.
+
+Migration belongs to an explicit editor operation: preserve IDs, values,
+per-field policies and unrelated/opaque custom fields while converting recognized
+v1 methods to v2. Coordinate all clients and the native Agent MemberSecret
+validator before enabling v2 discovery; old SDKs reject its policy. Agent choice
+must be explicit when multiple methods are visible, independent of available
+grants. The provider Credential's grant and exact HTTPS origin boundaries remain.
+
+The checked-in `src/sign-in-method-v2.fixtures.json` is an exact generated copy
+of `palladin-protocol/contracts/federated-signin/v2/fixtures.json` for isolated
+repository tests. Regenerate in the protocol repository and copy the output;
+never edit individual vectors.

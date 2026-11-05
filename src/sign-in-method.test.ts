@@ -106,3 +106,88 @@ describe('palladin.signin.v1 discovery contract', () => {
     expect(sealed.agentDiscovery).not.toBeNull()
   })
 })
+
+describe('multiple sign-in methods', () => {
+  function multiple() {
+    const secret = credential(linked, 'discovery')
+    secret.content.customFields.push({ id: OTHER, label: 'Private label', type: 'palladin.signin.v2',
+      value: { ...linked, account: 'second@corp.example' } })
+    secret.agentFieldAccess[OTHER] = 'discovery'
+    secret.content.customFields.reverse()
+    return secret
+  }
+  it.each([['current', current], ['legacy', legacy]] as const)('%s projects mixed methods sorted by ID without accounts or labels', (_, module) => {
+    const projected = module.projectAgentDiscovery(multiple() as never)!
+    expect(projected.fields.find(f => f.id === 'signIn')).toBeUndefined()
+    expect(JSON.parse(String(projected.fields.find(f => f.id === 'signInMethods')!.value))).toEqual({
+      schema: 'palladin.signin.v2', methods: [FIELD, OTHER].map(id => ({ id, provider: 'google', entry: linked.entry })),
+    })
+    expect(JSON.stringify(projected)).not.toMatch(/corp.example|Private label/)
+  })
+  it('keeps hidden methods private and suppresses singleton even if the v2 field is hidden', () => {
+    const secret = multiple()
+    secret.agentFieldAccess[OTHER] = 'never'
+    const fields = current.projectAgentDiscovery(secret)!.fields
+    expect(fields.some(f => f.id === 'signIn')).toBe(false)
+    expect(JSON.parse(fields.find(f => f.id === 'signInMethods')!.value).methods.map((m: {id:string}) => m.id)).toEqual([FIELD])
+  })
+  it('preserves opaque types and rejects their discovery', () => {
+    const secret = multiple()
+    secret.content.customFields[0]!.type = 'palladin.signin.v99'
+    expect(() => current.encodeMemberSecret(secret)).toThrow(/Unsafe AgentFieldAccess/)
+    secret.agentFieldAccess[OTHER] = 'never'
+    expect(current.parseMemberSecret(current.encodeMemberSecret(secret))).toEqual(secret)
+  })
+  it('rejects malformed v2 discovery but preserves it when hidden', () => {
+    const secret = multiple()
+    secret.content.customFields[0]!.value = { ...linked, token: 'synthetic' }
+    expect(() => current.encodeMemberSecret(secret)).toThrow(/Unsafe AgentFieldAccess/)
+    secret.agentFieldAccess[OTHER] = 'never'
+    expect(() => current.encodeMemberSecret(secret)).not.toThrow()
+  })
+})
+
+describe('strict v2 helpers', () => {
+  it('accepts multiple same-provider methods without exposing their accounts', async () => {
+    const { projectSignInMethodsDiscovery, canonicalSignInMethodsDiscovery, signInMethodsDiscoverySchema } = await import('./sign-in-method')
+    const fields = [OTHER, FIELD].map(id => ({ id, type: 'palladin.signin.v2', value: linked }))
+    const projected = projectSignInMethodsDiscovery('credential', fields, { [FIELD]: 'discovery', [OTHER]: 'discovery' })!
+    const wire = canonicalSignInMethodsDiscovery(projected.value)
+    expect(wire).toBe(`{"methods":[{"entry":{"entryId":"${ENTRY}","vaultId":"${VAULT}"},"id":"${FIELD}","provider":"google"},{"entry":{"entryId":"${ENTRY}","vaultId":"${VAULT}"},"id":"${OTHER}","provider":"google"}],"schema":"palladin.signin.v2"}`)
+    expect(signInMethodsDiscoverySchema.safeParse(JSON.parse(wire)).success).toBe(true)
+    for (const invalid of [
+      { ...projected.value, schema: 'palladin.signin.v3' },
+      { ...projected.value, account: 'synthetic' },
+      { ...projected.value, methods: [...projected.value.methods].reverse() },
+      { ...projected.value, methods: [projected.value.methods[0], projected.value.methods[0]] },
+      { ...projected.value, methods: [{ ...projected.value.methods[0], label: 'private' }] },
+      { ...projected.value, methods: [{ ...projected.value.methods[0], id: 'custom:not-a-uuid' }] },
+    ]) expect(signInMethodsDiscoverySchema.safeParse(invalid).success).toBe(false)
+    expect(projectSignInMethodsDiscovery('key', fields, { [FIELD]: 'discovery' })).toBeNull()
+    expect(projectSignInMethodsDiscovery('credential', fields, { [FIELD]: 'never', [OTHER]: 'never' })).toBeNull()
+    expect(projectSignInMethodsDiscovery('credential', [fields[0]!, fields[0]!], { [OTHER]: 'discovery' })).toBeNull()
+  })
+  it.each(['onGrantValue', 'onGrantRuntime', 'onGrantDerived'])('rejects v2 %s while defaulting to never', access => {
+    const secret = credential(linked, 'discovery')
+    secret.content.customFields[0]!.type = 'palladin.signin.v2'
+    expect(defaultCredentialAgentFieldAccess(secret.content.customFields)[FIELD]).toBe('never')
+    expect(() => current.encodeMemberSecret({ ...secret, agentFieldAccess: { ...secret.agentFieldAccess, [FIELD]: access } } as never)).toThrow(/Unsafe AgentFieldAccess/)
+  })
+})
+
+describe('protocol v2 conformance fixtures', () => {
+  it('accepts the language-neutral positives and rejects all negative vectors', async () => {
+    const { signInMethodsDiscoverySchema } = await import('./sign-in-method')
+    const { default: fixtures } = await import('./sign-in-method-v2.fixtures.json')
+    for (const value of fixtures.positive) expect(signInMethodsDiscoverySchema.safeParse(value).success).toBe(true)
+    for (const value of fixtures.negative) expect(signInMethodsDiscoverySchema.safeParse(value).success).toBe(false)
+  })
+})
+
+it('legacy singleton helper fails closed on a mixed collection even when v2 is hidden', async () => {
+  const { projectSignInDiscovery } = await import('./sign-in-method')
+  expect(projectSignInDiscovery('credential', [
+    { id: FIELD, type: SIGN_IN_FIELD_TYPE, value: linked },
+    { id: OTHER, type: 'palladin.signin.v2', value: linked },
+  ], { [FIELD]: 'discovery', [OTHER]: 'never' })).toBeNull()
+})

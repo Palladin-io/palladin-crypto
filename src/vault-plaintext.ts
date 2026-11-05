@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { canonicalSignInDiscovery, projectSignInDiscovery, SIGN_IN_FIELD_TYPE, signInAllowedAccess } from './sign-in-method'
+import { projectSignInDiscoveryField, SIGN_IN_FIELD_TYPE, SIGN_IN_FIELD_TYPE_V2, signInAllowedAccess, signInV2AllowedAccess } from './sign-in-method'
 import { scriptExecutionMetadataSchema } from './script-execution-metadata'
 
 export const AGENT_FIELD_ACCESS = [
@@ -229,7 +229,9 @@ function assertPolicy(secret: MemberSecretV1): void {
       ? customFields.find((candidate) => candidate.id === field)
       : undefined
     const allowed = custom
-      ? custom.type === SIGN_IN_FIELD_TYPE
+      ? custom.type === SIGN_IN_FIELD_TYPE_V2
+        ? signInV2AllowedAccess(secret.entryType, custom)
+        : custom.type === SIGN_IN_FIELD_TYPE
         ? signInAllowedAccess(secret.entryType, custom)
         : custom.type === 'totp'
         ? ['never', 'onGrantDerived']
@@ -366,10 +368,10 @@ export function projectAgentDiscovery(secret: MemberSecretV1): AgentDiscoveryV1 
   if (!secret.discoverable) return null
   const fields = Object.entries(secret.agentFieldAccess)
     .filter(([id, access]) => access === 'discovery' && id !== 'agentLabel' && id !== 'entryType')
-    .filter(([id]) => !secret.content.customFields.some((field) => field.id === id && field.type === SIGN_IN_FIELD_TYPE))
+    .filter(([id]) => !secret.content.customFields.some((field) => field.id === id && (field.type === SIGN_IN_FIELD_TYPE || field.type === SIGN_IN_FIELD_TYPE_V2)))
     .map(([id]) => ({ id, value: fieldValue(secret, id) }))
-  const signIn = projectSignInDiscovery(secret.entryType, secret.content.customFields, secret.agentFieldAccess)
-  if (signIn) fields.push({ id: signIn.id, value: canonicalSignInDiscovery(signIn.value) })
+  const signIn = projectSignInDiscoveryField(secret.entryType, secret.content.customFields, secret.agentFieldAccess)
+  if (signIn) fields.push(signIn)
   fields.sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
   return agentDiscoverySchema.parse({
     schema: 'palladin.agent-discovery.v1', entryType: secret.entryType, agentLabel: secret.agentLabel,
