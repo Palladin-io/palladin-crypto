@@ -10,13 +10,13 @@
       }
     ],
     "component": {
-      "bom-ref": "pkg:npm/%40palladin/crypto@0.15.0",
+      "bom-ref": "pkg:npm/%40palladin/crypto@0.17.0",
       "type": "library",
       "group": "@palladin",
       "name": "crypto",
-      "version": "0.15.0",
+      "version": "0.17.0",
       "description": "Candidate shared zero-knowledge crypto package for Palladin clients; consumer cutover is pending.",
-      "purl": "pkg:npm/%40palladin/crypto@0.15.0",
+      "purl": "pkg:npm/%40palladin/crypto@0.17.0",
       "licenses": [
         {
           "license": {
@@ -217,11 +217,11 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/zod@4.4.3",
+      "bom-ref": "pkg:npm/zod@4.6.7",
       "type": "library",
       "name": "zod",
-      "version": "4.4.3",
-      "purl": "pkg:npm/zod@4.4.3",
+      "version": "4.6.7",
+      "purl": "pkg:npm/zod@4.6.7",
       "scope": "required",
       "licenses": [
         {
@@ -233,26 +233,26 @@
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "cad10d163209165d94c1882575eda37215b61f09b818914b0e249759d4eb25004837d15cca9ee7e0387124489634024c575fc1a967d6fe4920ef55037072724d"
+          "content": "83c5b60f6914e9af2e9ed734e777d7d6e5412b333bcaa0315bfdf3c24f37fba472176f9228eb95f9cd30043854c335753da19aa66647fab99c5333dffb7086c2"
         }
       ],
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/zod/-/zod-4.4.3.tgz"
+          "url": "https://registry.npmjs.org/zod/-/zod-4.6.7.tgz"
         }
       ]
     }
   ],
   "dependencies": [
     {
-      "ref": "pkg:npm/%40palladin/crypto@0.15.0",
+      "ref": "pkg:npm/%40palladin/crypto@0.17.0",
       "dependsOn": [
         "pkg:npm/%40noble/hashes@2.4.0",
         "pkg:npm/%40scure/bip39@2.2.0",
         "pkg:npm/hash-wasm@4.12.0",
         "pkg:npm/libsodium-wrappers@0.8.4",
-        "pkg:npm/zod@4.4.3"
+        "pkg:npm/zod@4.6.7"
       ]
     },
     {
@@ -289,7 +289,7 @@
       "dependsOn": []
     },
     {
-      "ref": "pkg:npm/zod@4.4.3",
+      "ref": "pkg:npm/zod@4.6.7",
       "dependsOn": []
     }
   ]
