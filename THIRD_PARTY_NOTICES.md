@@ -207,9 +207,9 @@ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-## zod 4.4.3 — MIT
+## zod 4.6.7 — MIT
 
-Upstream package: https://www.npmjs.com/package/zod/v/4.4.3
+Upstream package: https://www.npmjs.com/package/zod/v/4.6.7
 
 ### LICENSE
 
