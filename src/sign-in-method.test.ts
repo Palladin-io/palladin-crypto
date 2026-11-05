@@ -131,6 +131,19 @@ describe('multiple sign-in methods', () => {
     expect(fields.some(f => f.id === 'signIn')).toBe(false)
     expect(JSON.parse(fields.find(f => f.id === 'signInMethods')!.value).methods.map((m: {id:string}) => m.id)).toEqual([FIELD])
   })
+  it.each([['current', current], ['legacy', legacy]] as const)('%s preserves legacy UUID spelling when a hidden v2 method is added', (_, module) => {
+    const secret = multiple()
+    const originalId = 'custom:AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA'
+    secret.content.customFields.find(field => field.id === FIELD)!.id = originalId
+    delete secret.agentFieldAccess[FIELD]
+    secret.agentFieldAccess[originalId] = 'discovery'
+    secret.agentFieldAccess[OTHER] = 'never'
+    const parsed = module.parseMemberSecret(module.encodeMemberSecret(secret as never))
+    const fields = module.projectAgentDiscovery(parsed as never)!.fields
+    expect(fields.some(field => field.id === 'signIn')).toBe(false)
+    expect(JSON.parse(String(fields.find(field => field.id === 'signInMethods')?.value)).methods)
+      .toEqual([{ id: originalId, provider: 'google', entry: linked.entry }])
+  })
   it('preserves opaque types and rejects their discovery', () => {
     const secret = multiple()
     secret.content.customFields[0]!.type = 'palladin.signin.v99'

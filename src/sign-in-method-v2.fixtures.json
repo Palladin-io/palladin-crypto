@@ -35,6 +35,19 @@
       "schema": "palladin.signin.v2",
       "methods": [
         {
+          "id": "custom:AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+          "provider": "google",
+          "entry": {
+            "vaultId": "44444444-4444-4444-8444-444444444444",
+            "entryId": "55555555-5555-4555-8555-555555555555"
+          }
+        }
+      ]
+    },
+    {
+      "schema": "palladin.signin.v2",
+      "methods": [
+        {
           "id": "custom:22222222-2222-4222-8222-222222222222",
           "provider": "apple",
           "entry": {

@@ -250,7 +250,7 @@ so regeneration changes the sealed bytes while keys, userId and secret stay fixe
 ## Multiple Credential sign-in methods (0.17.0 candidate)
 
 Use `SIGN_IN_FIELD_TYPE_V2` for each new per-method custom field, retaining its
-stable `custom:<UUID>` ID. The value uses the existing strict
+stable `custom:<UUID>` ID, preserving legacy UUID hexadecimal case. Ordering and uniqueness use exact IDs. The value uses the existing strict
 `signInMethodValueSchema` (`provider`, nullable `account`, nullable provider Entry
 reference). New methods default to `never`; only Credential methods can opt into
 `discovery`. They are never grantable fields.

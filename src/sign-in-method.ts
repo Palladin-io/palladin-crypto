@@ -63,7 +63,7 @@ export function canonicalSignInDiscovery(value: SignInDiscoveryValue): string {
 export const SIGN_IN_FIELD_TYPE_V2 = 'palladin.signin.v2'
 export const SIGN_IN_METHODS_DISCOVERY_FIELD_ID = 'signInMethods'
 
-export const signInMethodIdSchema = z.string().regex(/^custom:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+export const signInMethodIdSchema = z.string().regex(/^custom:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/)
 export const signInMethodsDiscoverySchema = z.object({
   schema: z.literal(SIGN_IN_FIELD_TYPE_V2),
   methods: z.array(z.object({
